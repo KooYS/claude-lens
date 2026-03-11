@@ -192,7 +192,7 @@ function handleTerminalConnection(ws) {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
-    cwd: process.env.HOME,
+    cwd: '/Users/koo/Desktop/dev/page-lens',
     env: { ...process.env, FORCE_COLOR: '1' },
   })
 
