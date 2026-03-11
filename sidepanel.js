@@ -1,229 +1,427 @@
-// Page Lens - Side Panel Script
+// Page Lens - CLI Interface
 
-const $ = (sel) => document.querySelector(sel)
-const analyzeBtn = $('#analyzeBtn')
-const resultsEl = $('#results')
-const loadingEl = $('#loading')
-const errorEl = $('#error')
-const pageUrlEl = $('#pageUrl')
+const output = document.getElementById('output')
+const input = document.getElementById('input')
 
-// Section toggle
-document.querySelectorAll('.section__title').forEach((title) => {
-  title.addEventListener('click', () => {
-    title.classList.toggle('open')
-  })
-})
-
-// Analyze button
-analyzeBtn.addEventListener('click', () => {
-  analyzePage()
-})
-
-// Update page URL on panel open
-updatePageInfo()
-
-async function updatePageInfo() {
-  try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    if (tab) {
-      pageUrlEl.textContent = tab.url || '-'
-      pageUrlEl.title = tab.url || ''
-    }
-  } catch {
-    pageUrlEl.textContent = '-'
-  }
+const COMMANDS = {
+  help: 'Show available commands',
+  analyze: 'Analyze current page structure',
+  tree: 'Show component tree (depth: 1-6, default 4)',
+  tech: 'Detect technologies used',
+  semantic: 'Show semantic tag usage',
+  layout: 'Detect flex/grid layout patterns',
+  inspect: 'Inspect element by CSS selector',
+  clear: 'Clear terminal',
 }
 
-async function analyzePage() {
-  showLoading(true)
-  hideError()
-  resultsEl.classList.add('hidden')
+const history = []
+let historyIndex = -1
+
+// Boot
+printBanner()
+
+// Input handling
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const cmd = input.value.trim()
+    if (!cmd) return
+    history.unshift(cmd)
+    historyIndex = -1
+    input.value = ''
+    execCommand(cmd)
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault()
+    if (historyIndex < history.length - 1) {
+      historyIndex++
+      input.value = history[historyIndex]
+    }
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault()
+    if (historyIndex > 0) {
+      historyIndex--
+      input.value = history[historyIndex]
+    } else {
+      historyIndex = -1
+      input.value = ''
+    }
+  }
+})
+
+// Keep focus on input
+document.addEventListener('click', () => input.focus())
+
+function printBanner() {
+  print(`<div class="banner">
+<span class="banner-title">Page Lens</span> <span class="c-dim">v0.1.0</span>
+<span class="c-muted">Analyze any webpage's DOM, layout, and styles.</span>
+<span class="c-dim">Type</span> <span class="c-purple">help</span> <span class="c-dim">to see available commands.</span>
+</div>`)
+}
+
+async function execCommand(raw) {
+  const parts = raw.split(/\s+/)
+  const cmd = parts[0].toLowerCase()
+  const args = parts.slice(1)
+
+  printCmd(raw)
 
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
-    if (!tab?.id) throw new Error('No active tab found')
-
-    pageUrlEl.textContent = tab.url || '-'
-    pageUrlEl.title = tab.url || ''
-
-    const response = await sendToContent(tab.id, { action: 'analyzePage', depth: 4 })
-    if (response.error) throw new Error(response.error)
-
-    renderSummary(response.summary)
-    renderTechnologies(response.summary.technologies)
-    renderSemanticTags(response.summary.semanticTags)
-    renderTree(response.tree)
-
-    resultsEl.classList.remove('hidden')
-
-    // Open summary section by default
-    document.querySelector('[data-toggle="summary"]')?.classList.add('open')
-    document.querySelector('[data-toggle="tree"]')?.classList.add('open')
+    switch (cmd) {
+      case 'help':
+        printHelp()
+        break
+      case 'analyze':
+        await cmdAnalyze()
+        break
+      case 'tree':
+        await cmdTree(args)
+        break
+      case 'tech':
+        await cmdTech()
+        break
+      case 'semantic':
+        await cmdSemantic()
+        break
+      case 'layout':
+        await cmdLayout()
+        break
+      case 'inspect':
+        await cmdInspect(args.join(' '))
+        break
+      case 'clear':
+        output.innerHTML = ''
+        printBanner()
+        break
+      default:
+        printError(`Unknown command: ${cmd}. Type "help" for available commands.`)
+    }
   } catch (err) {
-    showError(err.message)
-  } finally {
-    showLoading(false)
+    printError(err.message)
   }
+
+  scrollToBottom()
 }
 
-function sendToContent(tabId, message) {
-  return new Promise((resolve, reject) => {
-    chrome.tabs.sendMessage(tabId, message, (response) => {
-      if (chrome.runtime.lastError) {
-        reject(new Error(chrome.runtime.lastError.message))
-      } else {
-        resolve(response || {})
-      }
-    })
-  })
-}
+// ── Commands ──
 
-function renderSummary(summary) {
-  const el = $('#summarySection')
-  el.innerHTML = `
-    <div class="stat-grid">
-      <div class="stat">
-        <div class="stat__label">Elements</div>
-        <div class="stat__value">${summary.totalElements.toLocaleString()}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">Max Depth</div>
-        <div class="stat__value">${summary.maxDepth}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">Charset</div>
-        <div class="stat__value" style="font-size:13px">${summary.charset}</div>
-      </div>
-      <div class="stat">
-        <div class="stat__label">Lang</div>
-        <div class="stat__value" style="font-size:13px">${summary.lang || '-'}</div>
-      </div>
-    </div>
-    <div style="margin-top:8px">
-      <div class="stat__label" style="margin-bottom:4px">Top Tags</div>
-      <div class="tag-list">
-        ${summary.topTags.map(([tag, count]) =>
-          `<span class="tag">&lt;${escapeHtml(tag)}&gt; <span class="tag__count">${count}</span></span>`
-        ).join('')}
-      </div>
-    </div>
-  `
-}
-
-function renderTechnologies(techs) {
-  const el = $('#techsSection')
-  if (!techs || techs.length === 0) {
-    el.innerHTML = '<p class="no-data">No technologies detected</p>'
-    return
+function printHelp() {
+  let rows = ''
+  for (const [cmd, desc] of Object.entries(COMMANDS)) {
+    rows += `  <span class="c-purple">${cmd.padEnd(12)}</span><span class="c-muted">${desc}</span>\n`
   }
-  el.innerHTML = techs.map((t) => `<span class="tech-badge">${escapeHtml(t)}</span>`).join('')
+  print(`<div class="out-heading">Commands</div><pre>${rows}</pre>`)
 }
 
-function renderSemanticTags(tags) {
-  const el = $('#semanticSection')
-  const entries = Object.entries(tags || {})
-  if (entries.length === 0) {
-    el.innerHTML = '<p class="no-data">No semantic tags found</p>'
-    return
+async function cmdAnalyze() {
+  const spinnerId = showSpinner('Analyzing page...')
+  const { summary } = await sendAction('analyzePage', { depth: 4 })
+  hideSpinner(spinnerId)
+
+  let html = `<div class="out-heading">Page Summary</div>`
+
+  html += row('URL', `<span class="c-blue">${esc(summary.url)}</span>`)
+  html += row('Title', esc(summary.title))
+  html += row('Elements', `<span class="c-bright bold">${summary.totalElements.toLocaleString()}</span>`)
+  html += row('Max Depth', summary.maxDepth)
+  html += row('Charset', summary.charset)
+  html += row('Lang', summary.lang || '<span class="c-dim">-</span>')
+  html += row('Doctype', summary.hasDoctype ? '<span class="c-green">yes</span>' : '<span class="c-red">no</span>')
+
+  // Top tags
+  html += `<div class="out-heading">Top Tags</div>`
+  html += '<table class="out-table"><tr><th>Tag</th><th>Count</th></tr>'
+  for (const [tag, count] of summary.topTags) {
+    html += `<tr><td class="c-pink">&lt;${esc(tag)}&gt;</td><td class="c-muted">${count}</td></tr>`
   }
-  el.innerHTML = `
-    <div class="tag-list">
-      ${entries.map(([tag, count]) =>
-        `<span class="tag" style="color:#34d399">&lt;${escapeHtml(tag)}&gt; <span class="tag__count">${count}</span></span>`
-      ).join('')}
-    </div>
-  `
+  html += '</table>'
+
+  // Semantic
+  const semEntries = Object.entries(summary.semanticTags || {})
+  if (semEntries.length > 0) {
+    html += `<div class="out-heading">Semantic Tags</div>`
+    html += semEntries
+      .map(([t, c]) => `<span class="out-tag c-green">&lt;${esc(t)}&gt; ${c}</span>`)
+      .join(' ')
+  }
+
+  // Tech
+  if (summary.technologies?.length > 0) {
+    html += `<div class="out-heading">Technologies</div>`
+    html += summary.technologies
+      .map((t) => `<span class="out-tag c-cyan">${esc(t)}</span>`)
+      .join(' ')
+  }
+
+  print(html)
 }
 
-function renderTree(tree) {
-  const el = $('#treeSection')
+async function cmdTree(args) {
+  const depth = Math.min(Math.max(parseInt(args[0]) || 4, 1), 6)
+  const spinnerId = showSpinner(`Building tree (depth ${depth})...`)
+  const { tree } = await sendAction('analyzePage', { depth })
+  hideSpinner(spinnerId)
+
   if (!tree) {
-    el.innerHTML = '<p class="no-data">Could not build component tree</p>'
+    printError('Could not build component tree')
     return
   }
-  el.innerHTML = `<div class="tree">${buildTreeHtml(tree, 0)}</div>`
 
-  // Attach toggle listeners
-  el.querySelectorAll('.tree-toggle').forEach((toggle) => {
-    toggle.addEventListener('click', (e) => {
-      e.stopPropagation()
-      const node = toggle.closest('.tree-node')
-      const children = node?.querySelector(':scope > .tree-children')
-      if (children) {
-        children.classList.toggle('collapsed')
-        toggle.textContent = children.classList.contains('collapsed') ? '\u25B6' : '\u25BC'
-      }
+  const lines = []
+  renderTreeNode(tree, '', true, lines)
+
+  print(`<div class="out-heading">Component Tree</div>
+<div>${lines.join('\n')}</div>`)
+}
+
+function renderTreeNode(node, prefix, isLast, lines) {
+  if (!node) return
+
+  const connector = prefix === '' ? '' : (isLast ? ' \u2514\u2500 ' : ' \u251C\u2500 ')
+  const tagClass = node.isSemantic ? 'c-green bold' : 'c-pink'
+  const idStr = node.id ? `<span class="c-yellow">#${esc(node.id)}</span>` : ''
+  const classStr = node.classes?.length
+    ? `<span class="c-blue">.${node.classes.map(esc).join('.')}</span>`
+    : ''
+  const roleStr = node.role ? ` <span class="c-purple">[${esc(node.role)}]</span>` : ''
+  const countStr = node.childCount > 0 ? ` <span class="c-dim">(${node.childCount})</span>` : ''
+
+  lines.push(
+    `<div class="tree-line"><span class="indent">${esc(prefix)}${connector}</span><span class="${tagClass}">${esc(node.tag)}</span>${idStr}${classStr}${roleStr}${countStr}</div>`
+  )
+
+  const children = node.children || []
+  const nextPrefix = prefix === '' ? '' : prefix + (isLast ? '    ' : ' \u2502  ')
+
+  for (let i = 0; i < children.length; i++) {
+    renderTreeNode(children[i], nextPrefix, i === children.length - 1, lines)
+  }
+
+  if (node.truncated) {
+    const truncConn = ' \u2514\u2500 '
+    lines.push(
+      `<div class="tree-line"><span class="indent">${esc(nextPrefix)}${truncConn}</span><span class="c-dim">... +${node.truncated} more</span></div>`
+    )
+  }
+}
+
+async function cmdTech() {
+  const spinnerId = showSpinner('Detecting technologies...')
+  const { summary } = await sendAction('analyzePage', { depth: 1 })
+  hideSpinner(spinnerId)
+
+  const techs = summary.technologies || []
+  if (techs.length === 0) {
+    print(`<span class="c-muted">No technologies detected.</span>`)
+    return
+  }
+
+  print(`<div class="out-heading">Technologies</div>` +
+    techs.map((t) => `<span class="out-tag c-cyan">${esc(t)}</span>`).join(' '))
+}
+
+async function cmdSemantic() {
+  const spinnerId = showSpinner('Scanning semantic tags...')
+  const { summary } = await sendAction('analyzePage', { depth: 1 })
+  hideSpinner(spinnerId)
+
+  const tags = Object.entries(summary.semanticTags || {})
+  const roles = Object.entries(summary.landmarkRoles || {})
+
+  if (tags.length === 0 && roles.length === 0) {
+    print(`<span class="c-muted">No semantic tags or landmark roles found.</span>`)
+    return
+  }
+
+  let html = ''
+  if (tags.length > 0) {
+    html += `<div class="out-heading">Semantic Tags</div>`
+    html += '<table class="out-table"><tr><th>Tag</th><th>Count</th></tr>'
+    for (const [t, c] of tags) {
+      html += `<tr><td class="c-green">&lt;${esc(t)}&gt;</td><td class="c-muted">${c}</td></tr>`
+    }
+    html += '</table>'
+  }
+
+  if (roles.length > 0) {
+    html += `<div class="out-heading">ARIA Landmark Roles</div>`
+    html += '<table class="out-table"><tr><th>Role</th><th>Count</th></tr>'
+    for (const [r, c] of roles) {
+      html += `<tr><td class="c-purple">${esc(r)}</td><td class="c-muted">${c}</td></tr>`
+    }
+    html += '</table>'
+  }
+
+  print(html)
+}
+
+async function cmdLayout() {
+  const spinnerId = showSpinner('Detecting layout patterns...')
+  const { layouts } = await sendAction('detectLayouts')
+  hideSpinner(spinnerId)
+
+  let html = `<div class="out-heading">Layout Patterns</div>`
+  html += row('Flex containers', `<span class="c-bright bold">${layouts.flexCount}</span>`)
+  html += row('Grid containers', `<span class="c-bright bold">${layouts.gridCount}</span>`)
+
+  if (layouts.flex.length > 0) {
+    html += `<div class="out-heading">Flex Containers</div>`
+    html += '<table class="out-table"><tr><th>Selector</th><th>Direction</th><th>Justify</th><th>Align</th></tr>'
+    for (const f of layouts.flex.slice(0, 15)) {
+      html += `<tr>
+        <td class="c-pink">${esc(f.selector)}</td>
+        <td class="c-muted">${f.direction}</td>
+        <td class="c-muted">${f.justifyContent}</td>
+        <td class="c-muted">${f.alignItems}</td>
+      </tr>`
+    }
+    html += '</table>'
+  }
+
+  if (layouts.grid.length > 0) {
+    html += `<div class="out-heading">Grid Containers</div>`
+    html += '<table class="out-table"><tr><th>Selector</th><th>Columns</th><th>Gap</th></tr>'
+    for (const g of layouts.grid.slice(0, 15)) {
+      html += `<tr>
+        <td class="c-pink">${esc(g.selector)}</td>
+        <td class="c-muted">${esc(g.columns)}</td>
+        <td class="c-muted">${g.gap}</td>
+      </tr>`
+    }
+    html += '</table>'
+  }
+
+  print(html)
+}
+
+async function cmdInspect(selector) {
+  if (!selector) {
+    printError('Usage: inspect <css-selector>\nExample: inspect .header, inspect #main, inspect nav')
+    return
+  }
+
+  const spinnerId = showSpinner(`Inspecting "${selector}"...`)
+  const { info } = await sendAction('getElementInfo', { selector })
+  hideSpinner(spinnerId)
+
+  if (!info) {
+    printError(`Element not found: ${selector}`)
+    return
+  }
+
+  let html = `<div class="out-heading">&lt;${esc(info.tag)}&gt;</div>`
+  if (info.id) html += row('id', `<span class="c-yellow">${esc(info.id)}</span>`)
+  if (info.classes.length) html += row('classes', info.classes.map((c) => `<span class="c-blue">.${esc(c)}</span>`).join(' '))
+
+  html += row('size', `${info.dimensions.width} x ${info.dimensions.height}`)
+  html += row('position', `top: ${info.dimensions.top}, left: ${info.dimensions.left}`)
+  html += row('children', info.childElementCount)
+
+  if (info.textContent) {
+    html += row('text', `<span class="c-dim">"${esc(info.textContent)}"</span>`)
+  }
+
+  // Attributes
+  const attrEntries = Object.entries(info.attributes || {})
+  if (attrEntries.length > 0) {
+    html += `<div class="out-heading">Attributes</div>`
+    for (const [k, v] of attrEntries) {
+      html += row(k, `<span class="c-orange">${esc(v)}</span>`)
+    }
+  }
+
+  // Styles
+  const styleEntries = Object.entries(info.styles || {})
+  if (styleEntries.length > 0) {
+    html += `<div class="out-heading">Computed Styles</div>`
+    for (const [prop, val] of styleEntries) {
+      html += row(prop, `<span class="c-cyan">${esc(val)}</span>`)
+    }
+  }
+
+  print(html)
+}
+
+// ── Helpers ──
+
+function sendAction(action, extra = {}) {
+  return new Promise((resolve, reject) => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const tabId = tabs[0]?.id
+      if (!tabId) return reject(new Error('No active tab'))
+
+      chrome.tabs.sendMessage(tabId, { action, ...extra }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message))
+        } else if (response?.error) {
+          reject(new Error(response.error))
+        } else {
+          resolve(response)
+        }
+      })
     })
   })
 }
 
-function buildTreeHtml(node, depth) {
-  if (!node) return ''
+function print(html) {
+  const block = document.createElement('div')
+  block.className = 'out-block'
+  block.innerHTML = html
+  output.appendChild(block)
+  scrollToBottom()
+}
 
-  const hasChildren = node.children && node.children.length > 0
-  const toggleHtml = hasChildren
-    ? `<span class="tree-toggle">\u25BC</span>`
-    : `<span class="tree-toggle" style="visibility:hidden">\u25BC</span>`
+function printCmd(text) {
+  const block = document.createElement('div')
+  block.className = 'out-cmd'
+  block.innerHTML = `<span class="c-purple">$</span> <span class="cmd-text">${esc(text)}</span>`
+  output.appendChild(block)
+}
 
-  const tagClass = node.isSemantic ? 'tree-tag semantic' : 'tree-tag'
-  const idHtml = node.id ? `<span class="tree-id">#${escapeHtml(node.id)}</span>` : ''
-  const classHtml = node.classes?.length
-    ? `<span class="tree-class">.${node.classes.map(escapeHtml).join('.')}</span>`
-    : ''
-  const roleHtml = node.role ? `<span class="tree-role">[${escapeHtml(node.role)}]</span>` : ''
-  const countHtml = node.childCount > 0
-    ? `<span class="tree-count">(${node.childCount})</span>`
-    : ''
+function printError(msg) {
+  print(`<div class="out-error">${esc(msg)}</div>`)
+}
 
-  let html = `
-    <div class="tree-node">
-      <span class="tree-label">
-        ${toggleHtml}
-        <span class="${tagClass}">&lt;${escapeHtml(node.tag)}&gt;</span>
-        ${idHtml}${classHtml}${roleHtml}
-        ${countHtml}
-      </span>
-  `
+function row(label, value) {
+  return `<div class="out-row"><span class="label">${esc(label)}</span><span class="value">${value}</span></div>`
+}
 
-  if (hasChildren) {
-    html += `<div class="tree-children${depth >= 2 ? ' collapsed' : ''}">`
-    for (const child of node.children) {
-      html += buildTreeHtml(child, depth + 1)
-    }
-    if (node.truncated) {
-      html += `<div class="tree-node"><span class="tree-count">... +${node.truncated} more</span></div>`
-    }
-    html += '</div>'
+let spinnerCounter = 0
+function showSpinner(text) {
+  const id = `spinner-${++spinnerCounter}`
+  const el = document.createElement('div')
+  el.id = id
+  el.className = 'spinner-line'
+  el.textContent = `⠋ ${text}`
+  output.appendChild(el)
+  scrollToBottom()
 
-    // If collapsed by default, update toggle icon
-    if (depth >= 2) {
-      html = html.replace(
-        `<span class="tree-toggle">\u25BC</span>`,
-        `<span class="tree-toggle">\u25B6</span>`
-      )
-    }
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+  let i = 0
+  el._interval = setInterval(() => {
+    i = (i + 1) % frames.length
+    el.textContent = `${frames[i]} ${text}`
+  }, 80)
+
+  return id
+}
+
+function hideSpinner(id) {
+  const el = document.getElementById(id)
+  if (el) {
+    clearInterval(el._interval)
+    el.remove()
   }
-
-  html += '</div>'
-  return html
 }
 
-function escapeHtml(str) {
-  const div = document.createElement('div')
-  div.textContent = str
-  return div.innerHTML
+function esc(str) {
+  if (str == null) return ''
+  const d = document.createElement('div')
+  d.textContent = String(str)
+  return d.innerHTML
 }
 
-function showLoading(show) {
-  loadingEl.classList.toggle('hidden', !show)
-  analyzeBtn.disabled = show
-}
-
-function showError(msg) {
-  errorEl.textContent = msg
-  errorEl.classList.remove('hidden')
-}
-
-function hideError() {
-  errorEl.classList.add('hidden')
+function scrollToBottom() {
+  requestAnimationFrame(() => {
+    output.scrollTop = output.scrollHeight
+  })
 }
