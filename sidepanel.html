@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Page Lens</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="header">
+    <h1 class="header__title">Page Lens</h1>
+    <p class="header__url" id="pageUrl">-</p>
+  </header>
+
+  <div class="actions">
+    <button class="btn btn--primary" id="analyzeBtn">Analyze Page</button>
+  </div>
+
+  <div id="results" class="results hidden">
+    <!-- Page Summary -->
+    <section class="section">
+      <h2 class="section__title" data-toggle="summary">Page Summary</h2>
+      <div class="section__body" id="summarySection"></div>
+    </section>
+
+    <!-- Technologies -->
+    <section class="section">
+      <h2 class="section__title" data-toggle="techs">Technologies</h2>
+      <div class="section__body" id="techsSection"></div>
+    </section>
+
+    <!-- Semantic Tags -->
+    <section class="section">
+      <h2 class="section__title" data-toggle="semantic">Semantic Tags</h2>
+      <div class="section__body" id="semanticSection"></div>
+    </section>
+
+    <!-- Component Tree -->
+    <section class="section">
+      <h2 class="section__title" data-toggle="tree">Component Tree</h2>
+      <div class="section__body" id="treeSection"></div>
+    </section>
+  </div>
+
+  <div id="loading" class="loading hidden">
+    <div class="spinner"></div>
+    <p>Analyzing page...</p>
+  </div>
+
+  <div id="error" class="error hidden"></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
