@@ -1,11 +1,36 @@
 // Page Lens - Content Script
-// 1. DOM analysis (existing)
-// 2. Element inspector overlay
+// Guard against double injection
+if (window.__pageLensLoaded) {
+  // Already loaded — just re-register inspector availability
+} else {
+  window.__pageLensLoaded = true
+}
+
+console.log('[page-lens] content script loaded')
 
 // ── Analysis Handlers ──
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'analyzePage') {
+  const action = message.action
+
+  if (action === 'ping') {
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (action === 'startInspector') {
+    Inspector.start()
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (action === 'stopInspector') {
+    Inspector.stop()
+    sendResponse({ ok: true })
+    return
+  }
+
+  if (action === 'analyzePage') {
     try {
       const summary = DomAnalyzer.getPageSummary()
       const tree = DomAnalyzer.buildComponentTree(message.depth || 4)
@@ -13,30 +38,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } catch (err) {
       sendResponse({ error: err.message })
     }
-    return true
+    return
   }
 
-  if (message.action === 'getElementInfo') {
+  if (action === 'getElementInfo') {
     try {
       const info = StyleExtractor.getElementInfo(message.selector)
       sendResponse({ info })
     } catch (err) {
       sendResponse({ error: err.message })
     }
-    return true
+    return
   }
 
-  if (message.action === 'detectLayouts') {
+  if (action === 'detectLayouts') {
     try {
       const layouts = LayoutDetector.detectLayouts()
       sendResponse({ layouts })
     } catch (err) {
       sendResponse({ error: err.message })
     }
-    return true
+    return
   }
 
-  if (message.action === 'getOuterHTML') {
+  if (action === 'getOuterHTML') {
     try {
       const selector = message.selector || 'body'
       const el = document.querySelector(selector)
@@ -45,19 +70,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     } catch (err) {
       sendResponse({ error: err.message })
     }
-    return true
-  }
-
-  if (message.action === 'startInspector') {
-    Inspector.start()
-    sendResponse({ ok: true })
-    return true
-  }
-
-  if (message.action === 'stopInspector') {
-    Inspector.stop()
-    sendResponse({ ok: true })
-    return true
+    return
   }
 })
 
@@ -70,13 +83,14 @@ const Inspector = (() => {
   let hoveredEl = null
 
   function start() {
-    if (active) return
+    if (active) stop() // reset if already active
     active = true
     createOverlay()
     document.addEventListener('mousemove', onMouseMove, true)
     document.addEventListener('click', onClick, true)
     document.addEventListener('keydown', onKeyDown, true)
     document.body.style.cursor = 'crosshair'
+    console.log('[page-lens] inspector started')
   }
 
   function stop() {
@@ -88,9 +102,11 @@ const Inspector = (() => {
     document.removeEventListener('keydown', onKeyDown, true)
     document.body.style.cursor = ''
     hoveredEl = null
+    console.log('[page-lens] inspector stopped')
   }
 
   function createOverlay() {
+    removeOverlay() // clean up any existing
     overlay = document.createElement('div')
     overlay.id = '__page-lens-overlay'
     overlay.style.cssText = `
@@ -114,8 +130,8 @@ const Inspector = (() => {
   }
 
   function removeOverlay() {
-    overlay?.remove()
-    label?.remove()
+    document.getElementById('__page-lens-overlay')?.remove()
+    document.getElementById('__page-lens-label')?.remove()
     overlay = null
     label = null
   }
@@ -132,14 +148,12 @@ const Inspector = (() => {
     overlay.style.height = rect.height + 'px'
     overlay.style.display = 'block'
 
-    // Label
     const tag = el.tagName.toLowerCase()
     const id = el.id ? `#${el.id}` : ''
     const cls = el.classList.length ? `.${Array.from(el.classList).slice(0, 2).join('.')}` : ''
-    const size = `${Math.round(rect.width)}×${Math.round(rect.height)}`
+    const size = `${Math.round(rect.width)}\u00D7${Math.round(rect.height)}`
     label.textContent = `${tag}${id}${cls}  ${size}`
 
-    // Position label above or below
     const labelY = rect.top > 28 ? rect.top - 24 : rect.bottom + 4
     label.style.top = labelY + 'px'
     label.style.left = Math.max(0, rect.left) + 'px'
@@ -156,59 +170,124 @@ const Inspector = (() => {
     const data = captureElement(hoveredEl)
     stop()
 
-    // Send to side panel
-    chrome.runtime.sendMessage({ action: 'elementPicked', data })
+    chrome.storage.local.set({ pickedElement: data, pickedAt: Date.now() })
   }
 
   function onKeyDown(e) {
     if (e.key === 'Escape') {
       e.preventDefault()
       stop()
-      chrome.runtime.sendMessage({ action: 'inspectorCancelled' })
+      chrome.storage.local.set({ pickedElement: null, pickedAt: Date.now() })
     }
   }
 
   function captureElement(el) {
-    const rect = el.getBoundingClientRect()
-    const computed = getComputedStyle(el)
-    const tag = el.tagName.toLowerCase()
-    const id = el.id ? `#${el.id}` : ''
-    const cls = el.classList.length ? `.${Array.from(el.classList).join('.')}` : ''
-
-    // Key styles
-    const styles = {}
-    const props = [
-      'display', 'position', 'width', 'height',
-      'flex-direction', 'justify-content', 'align-items', 'gap',
-      'grid-template-columns',
-      'font-size', 'font-weight', 'color', 'background-color',
-      'padding', 'margin', 'border', 'border-radius',
-      'box-shadow', 'overflow', 'z-index', 'opacity',
-    ]
-    for (const p of props) {
-      const v = computed.getPropertyValue(p)
-      if (v && v !== 'none' && v !== 'auto' && v !== 'normal' &&
-          v !== '0px' && v !== 'rgba(0, 0, 0, 0)' && v !== 'transparent') {
-        styles[p] = v
-      }
-    }
-
-    // Trimmed outer HTML (limit size)
-    let html = el.outerHTML
-    if (html.length > 3000) {
-      html = html.slice(0, 3000) + '\n... (truncated)'
-    }
+    // Build a compact structural summary instead of raw HTML
+    const lines = []
+    buildStructureTree(el, '', true, lines, 0, 4)
 
     return {
-      selector: `${tag}${id}${cls}`,
-      tag,
-      id: el.id || null,
-      classes: Array.from(el.classList),
-      size: { w: Math.round(rect.width), h: Math.round(rect.height) },
-      position: { top: Math.round(rect.top), left: Math.round(rect.left) },
-      styles,
-      html,
       pageUrl: location.href,
+      tree: lines.join('\n'),
+    }
+  }
+
+  // Compact tree: <tag#id.class> size | layout-info
+  function buildStructureTree(el, prefix, isLast, lines, depth, maxDepth) {
+    if (!el || depth > maxDepth) return
+
+    const tag = el.tagName.toLowerCase()
+    if (['script', 'style', 'noscript', 'link', 'meta', 'br', 'hr'].includes(tag)) return
+
+    const id = el.id ? `#${el.id}` : ''
+    const cls = el.classList.length
+      ? `.${Array.from(el.classList).slice(0, 3).join('.')}`
+      : ''
+    const rect = el.getBoundingClientRect()
+    const computed = getComputedStyle(el)
+
+    // Size
+    const w = Math.round(rect.width)
+    const h = Math.round(rect.height)
+    const size = (w || h) ? `${w}\u00D7${h}` : ''
+
+    // Layout hints (only meaningful ones)
+    const hints = []
+    const display = computed.display
+    if (display === 'flex' || display === 'inline-flex') {
+      const dir = computed.flexDirection
+      const justify = computed.justifyContent
+      const align = computed.alignItems
+      let flex = `flex`
+      if (dir !== 'row') flex += ` ${dir}`
+      if (justify !== 'normal' && justify !== 'flex-start') flex += ` ${justify}`
+      if (align !== 'normal' && align !== 'stretch') flex += ` align:${align}`
+      const gap = computed.gap
+      if (gap && gap !== 'normal' && gap !== '0px') flex += ` gap:${gap}`
+      hints.push(flex)
+    } else if (display === 'grid' || display === 'inline-grid') {
+      const cols = computed.gridTemplateColumns
+      // Summarize grid: count columns
+      const colCount = cols.split(/\s+/).length
+      hints.push(`grid ${colCount}col`)
+    } else if (display !== 'block' && display !== 'inline' && display !== '') {
+      hints.push(display)
+    }
+
+    if (computed.position !== 'static') hints.push(`pos:${computed.position}`)
+    if (computed.overflow !== 'visible') hints.push(`overflow:${computed.overflow}`)
+
+    // Key attributes for non-div elements
+    const attrs = []
+    if (tag === 'a') attrs.push(`href="${(el.getAttribute('href') || '').slice(0, 50)}"`)
+    if (tag === 'img') attrs.push(`src="${(el.getAttribute('src') || '').slice(0, 50)}"`)
+    if (tag === 'input') attrs.push(`type="${el.type}"`)
+    if (el.getAttribute('role')) attrs.push(`role="${el.getAttribute('role')}"`)
+    if (el.getAttribute('aria-label')) attrs.push(`aria="${el.getAttribute('aria-label').slice(0, 30)}"`)
+
+    // Text content (leaf nodes only, short)
+    let text = ''
+    if (el.childElementCount === 0 && el.textContent?.trim()) {
+      const t = el.textContent.trim()
+      if (t.length <= 40) text = ` "${t}"`
+      else text = ` "${t.slice(0, 37)}..."`
+    }
+
+    // Build line
+    const connector = prefix === '' ? '' : (isLast ? '\u2514\u2500 ' : '\u251C\u2500 ')
+    const meta = [size, ...hints, ...attrs].filter(Boolean).join(' | ')
+    const metaStr = meta ? ` ${meta}` : ''
+    lines.push(`${prefix}${connector}<${tag}${id}${cls}>${metaStr}${text}`)
+
+    // Children
+    const children = Array.from(el.children).filter((c) => {
+      const t = c.tagName.toLowerCase()
+      return !['script', 'style', 'noscript', 'link', 'meta', 'br', 'hr'].includes(t)
+    })
+
+    // If too many similar children, collapse
+    if (children.length > 8) {
+      const groups = {}
+      for (const c of children) {
+        const key = c.tagName.toLowerCase() + (c.className ? `.${c.classList[0]}` : '')
+        groups[key] = (groups[key] || 0) + 1
+      }
+
+      const nextPrefix = prefix === '' ? '' : prefix + (isLast ? '   ' : '\u2502  ')
+      // Show first 3, then summary
+      for (let i = 0; i < Math.min(3, children.length); i++) {
+        buildStructureTree(children[i], nextPrefix, i === 2 && children.length <= 3, lines, depth + 1, maxDepth)
+      }
+      if (children.length > 3) {
+        const summary = Object.entries(groups).map(([k, v]) => `<${k}>\u00D7${v}`).join(', ')
+        lines.push(`${nextPrefix}\u2514\u2500 ... ${children.length} children: ${summary}`)
+      }
+      return
+    }
+
+    const nextPrefix = prefix === '' ? '' : prefix + (isLast ? '   ' : '\u2502  ')
+    for (let i = 0; i < children.length; i++) {
+      buildStructureTree(children[i], nextPrefix, i === children.length - 1, lines, depth + 1, maxDepth)
     }
   }
 

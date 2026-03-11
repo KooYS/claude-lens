@@ -3,7 +3,7 @@
   "name": "Page Lens",
   "version": "0.2.0",
   "description": "Claude Code CLI in your browser side panel",
-  "permissions": ["activeTab", "sidePanel", "tabs"],
+  "permissions": ["activeTab", "sidePanel", "tabs", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "sidepanel.html" },

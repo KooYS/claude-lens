@@ -121,9 +121,19 @@ pickBtn.addEventListener('click', async () => {
   toolbarLabel.textContent = 'Pick an element...'
 
   try {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
     if (!tab?.id) throw new Error('No active tab')
-    chrome.tabs.sendMessage(tab.id, { action: 'startInspector' })
+
+    // Send via background.js which can use chrome.scripting
+    chrome.runtime.sendMessage(
+      { action: 'startInspector', tabId: tab.id },
+      (response) => {
+        if (chrome.runtime.lastError || response?.error) {
+          stopPicking()
+          toolbarLabel.textContent = `Error: ${chrome.runtime.lastError?.message || response.error}`
+        }
+      },
+    )
   } catch (err) {
     stopPicking()
     toolbarLabel.textContent = `Error: ${err.message}`
@@ -136,39 +146,20 @@ function stopPicking() {
   toolbarLabel.textContent = 'Page Lens'
 }
 
-// Listen for picked element from content script
-chrome.runtime.onMessage.addListener((message) => {
-  if (message.action === 'elementPicked') {
+// Listen for picked element via chrome.storage
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.pickedElement && picking) {
     stopPicking()
-    injectElementData(message.data)
-  }
-
-  if (message.action === 'inspectorCancelled') {
-    stopPicking()
+    const data = changes.pickedElement.newValue
+    if (data) {
+      injectElementData(data)
+    }
   }
 })
 
 function injectElementData(data) {
-  // Format as a concise context block
-  const lines = []
-  lines.push(`I'm looking at this element on ${data.pageUrl}:`)
-  lines.push('')
-  lines.push(`Selector: ${data.selector}`)
-  lines.push(`Size: ${data.size.w}×${data.size.h}px`)
+  const text = `Here is the element structure from ${data.pageUrl}:\n\n${data.tree}\n`
 
-  const styleEntries = Object.entries(data.styles || {})
-  if (styleEntries.length > 0) {
-    lines.push(`Styles: ${styleEntries.map(([k, v]) => `${k}: ${v}`).join('; ')}`)
-  }
-
-  lines.push('')
-  lines.push('```html')
-  lines.push(data.html)
-  lines.push('```')
-
-  const text = lines.join('\n')
-
-  // Send to server as inject message → writes to Claude PTY stdin
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'inject', text }))
   }
