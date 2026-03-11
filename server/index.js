@@ -188,7 +188,7 @@ function queryExtension(action, params, timeout = 10000) {
 function handleTerminalConnection(ws) {
   console.log('[claude-lens] terminal client connected, spawning claude...')
 
-  const shell = pty.spawn(CLAUDE_BIN, [], {
+  const shell = pty.spawn(CLAUDE_BIN, ['--dangerously-skip-permissions'], {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
