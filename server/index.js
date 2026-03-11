@@ -76,6 +76,38 @@ const httpServer = http.createServer((req, res) => {
     return
   }
 
+  if (url.pathname === '/api/eval') {
+    const code = url.searchParams.get('code')
+    if (!code) { res.writeHead(400); res.end(JSON.stringify({ error: 'code param required' })); return }
+    queryExtension('evaluateJS', { code })
+      .then((data) => { res.writeHead(200); res.end(JSON.stringify(data)) })
+      .catch((err) => { res.writeHead(502); res.end(JSON.stringify({ error: err.message })) })
+    return
+  }
+
+  if (url.pathname === '/api/pageinfo') {
+    queryExtension('getPageInfo', {})
+      .then((data) => { res.writeHead(200); res.end(JSON.stringify(data)) })
+      .catch((err) => { res.writeHead(502); res.end(JSON.stringify({ error: err.message })) })
+    return
+  }
+
+  if (url.pathname === '/api/inputs') {
+    queryExtension('getInputValues', {})
+      .then((data) => { res.writeHead(200); res.end(JSON.stringify(data)) })
+      .catch((err) => { res.writeHead(502); res.end(JSON.stringify({ error: err.message })) })
+    return
+  }
+
+  if (url.pathname === '/api/text') {
+    const selector = url.searchParams.get('selector') || 'body'
+    const maxLength = parseInt(url.searchParams.get('maxLength')) || 2000
+    queryExtension('getVisibleText', { selector, maxLength })
+      .then((data) => { res.writeHead(200); res.end(JSON.stringify(data)) })
+      .catch((err) => { res.writeHead(502); res.end(JSON.stringify({ error: err.message })) })
+    return
+  }
+
   if (url.pathname === '/api/status') {
     res.writeHead(200)
     res.end(JSON.stringify({ connected: controlWs?.readyState === WebSocket.OPEN }))

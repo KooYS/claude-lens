@@ -1,4 +1,5 @@
-const WS_URL = 'ws://localhost:19280/terminal'
+const TERMINAL_URL = 'ws://localhost:19280/terminal'
+const CONTROL_URL = 'ws://localhost:19280/control'
 const RECONNECT_INTERVAL = 3000
 
 const statusEl = document.getElementById('status')
@@ -7,6 +8,7 @@ const pickBtn = document.getElementById('pickBtn')
 const toolbarLabel = document.getElementById('toolbarLabel')
 
 let ws = null
+let controlWs = null
 let term = null
 let fitAddon = null
 let picking = false
@@ -48,20 +50,11 @@ function initTerminal() {
 
   fitAddon = new FitAddon.FitAddon()
   term.loadAddon(fitAddon)
-
-  try {
-    const webglAddon = new WebglAddon.WebglAddon()
-    webglAddon.onContextLoss(() => webglAddon.dispose())
-    term.loadAddon(webglAddon)
-  } catch {}
-
   term.open(terminalEl)
   fitAddon.fit()
 
   term.onData((data) => {
-    if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(data)
-    }
+    if (ws?.readyState === WebSocket.OPEN) ws.send(data)
   })
 
   term.onResize(({ cols, rows }) => {
@@ -73,9 +66,11 @@ function initTerminal() {
   new ResizeObserver(() => fitAddon.fit()).observe(terminalEl)
 }
 
-function connect() {
+// ── Terminal WebSocket ──
+
+function connectTerminal() {
   showStatus('Connecting to server...')
-  ws = new WebSocket(WS_URL)
+  ws = new WebSocket(TERMINAL_URL)
 
   ws.onopen = () => {
     hideStatus()
@@ -87,13 +82,60 @@ function connect() {
 
   ws.onclose = () => {
     showStatus('Disconnected. Reconnecting...', false)
-    setTimeout(connect, RECONNECT_INTERVAL)
+    setTimeout(connectTerminal, RECONNECT_INTERVAL)
   }
 
   ws.onerror = () => {
     showStatus('Cannot connect.\nnpm start --prefix ~/Desktop/dev/page-lens/server', true)
   }
 }
+
+// ── Control WebSocket (for MCP API requests) ──
+
+function connectControl() {
+  controlWs = new WebSocket(CONTROL_URL)
+
+  controlWs.onopen = () => console.log('[page-lens] control connected')
+
+  controlWs.onmessage = async (event) => {
+    let msg
+    try { msg = JSON.parse(event.data) } catch { return }
+    if (!msg.id || !msg.action) return
+
+    try {
+      const result = await queryContentScript(msg.action, msg)
+      controlWs.send(JSON.stringify({ id: msg.id, result }))
+    } catch (err) {
+      controlWs.send(JSON.stringify({ id: msg.id, error: err.message }))
+    }
+  }
+
+  controlWs.onclose = () => {
+    console.log('[page-lens] control disconnected, reconnecting...')
+    setTimeout(connectControl, RECONNECT_INTERVAL)
+  }
+
+  controlWs.onerror = () => {} // onclose handles reconnect
+}
+
+async function queryContentScript(action, params) {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
+  if (!tab?.id) throw new Error('No active tab')
+
+  return new Promise((resolve, reject) => {
+    // Ask background to inject + query
+    chrome.runtime.sendMessage(
+      { action: 'queryTab', tabId: tab.id, query: { action, ...params } },
+      (response) => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message))
+        else if (response?.error) reject(new Error(response.error))
+        else resolve(response)
+      },
+    )
+  })
+}
+
+// ── Status ──
 
 function showStatus(text, isError = false) {
   statusEl.textContent = text
@@ -124,7 +166,6 @@ pickBtn.addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true })
     if (!tab?.id) throw new Error('No active tab')
 
-    // Send via background.js which can use chrome.scripting
     chrome.runtime.sendMessage(
       { action: 'startInspector', tabId: tab.id },
       (response) => {
@@ -146,28 +187,24 @@ function stopPicking() {
   toolbarLabel.textContent = 'Page Lens'
 }
 
-// Listen for picked element via chrome.storage
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.pickedElement && picking) {
     stopPicking()
     const data = changes.pickedElement.newValue
-    if (data) {
-      injectElementData(data)
-    }
+    if (data) injectElementData(data)
   }
 })
 
 function injectElementData(data) {
   const text = `Here is the element structure from ${data.pageUrl}:\n\n${data.tree}\n`
-
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'inject', text }))
   }
-
   term.focus()
 }
 
 // ── Boot ──
 
 initTerminal()
-connect()
+connectTerminal()
+connectControl()

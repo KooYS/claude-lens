@@ -72,7 +72,70 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
     return
   }
+
+  if (action === 'evaluateJS') {
+    try {
+      const result = new Function(message.code)()
+      sendResponse({ result: String(result) })
+    } catch (err) {
+      sendResponse({ error: err.message })
+    }
+    return
+  }
+
+  if (action === 'getPageInfo') {
+    sendResponse({
+      url: location.href,
+      title: document.title,
+      lang: document.documentElement.lang,
+      readyState: document.readyState,
+    })
+    return
+  }
+
+  if (action === 'getInputValues') {
+    try {
+      const inputs = Array.from(document.querySelectorAll('input, textarea, select'))
+      const values = inputs
+        .filter((el) => el.value)
+        .map((el) => ({
+          tag: el.tagName.toLowerCase(),
+          type: el.type || null,
+          name: el.name || null,
+          id: el.id || null,
+          placeholder: el.placeholder || null,
+          value: el.value.slice(0, 200),
+          selector: buildCssSelector(el),
+        }))
+      sendResponse({ values })
+    } catch (err) {
+      sendResponse({ error: err.message })
+    }
+    return
+  }
+
+  if (action === 'getVisibleText') {
+    try {
+      const selector = message.selector || 'body'
+      const el = document.querySelector(selector)
+      if (!el) { sendResponse({ error: `Not found: ${selector}` }); return }
+      // Get visible text, trim whitespace
+      const text = el.innerText?.slice(0, message.maxLength || 2000) || ''
+      sendResponse({ text })
+    } catch (err) {
+      sendResponse({ error: err.message })
+    }
+    return
+  }
 })
+
+function buildCssSelector(el) {
+  if (el.id) return `#${el.id}`
+  const tag = el.tagName.toLowerCase()
+  if (el.name) return `${tag}[name="${el.name}"]`
+  if (el.classList.length) return `${tag}.${el.classList[0]}`
+  return tag
+}
 
 // ── Element Inspector ──
 
