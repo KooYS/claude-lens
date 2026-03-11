@@ -1,5 +1,5 @@
 {
-  "name": "page-lens-server",
+  "name": "claude-lens-server",
   "version": "0.1.0",
   "private": true,
   "description": "Local bridge server: Chrome Extension ↔ Claude Code CLI",

@@ -137,7 +137,7 @@ wss.on('connection', (ws, req) => {
 // ── Control Connection (background.js) ──
 
 function handleControlConnection(ws) {
-  console.log('[page-lens] extension control connected')
+  console.log('[claude-lens] extension control connected')
   controlWs = ws
 
   ws.on('message', (raw) => {
@@ -154,7 +154,7 @@ function handleControlConnection(ws) {
   })
 
   ws.on('close', () => {
-    console.log('[page-lens] extension control disconnected')
+    console.log('[claude-lens] extension control disconnected')
     if (controlWs === ws) controlWs = null
     // Reject all pending
     for (const [id, { reject, timer }] of pendingRequests) {
@@ -168,7 +168,7 @@ function handleControlConnection(ws) {
 function queryExtension(action, params, timeout = 10000) {
   return new Promise((resolve, reject) => {
     if (!controlWs || controlWs.readyState !== WebSocket.OPEN) {
-      reject(new Error('Extension not connected. Open the Page Lens side panel.'))
+      reject(new Error('Extension not connected. Open the Claude Lens side panel.'))
       return
     }
 
@@ -186,7 +186,7 @@ function queryExtension(action, params, timeout = 10000) {
 // ── Terminal Connection (sidepanel.js) ──
 
 function handleTerminalConnection(ws) {
-  console.log('[page-lens] terminal client connected, spawning claude...')
+  console.log('[claude-lens] terminal client connected, spawning claude...')
 
   const shell = pty.spawn(CLAUDE_BIN, [], {
     name: 'xterm-256color',
@@ -201,7 +201,7 @@ function handleTerminalConnection(ws) {
   })
 
   shell.onExit(({ exitCode }) => {
-    console.log(`[page-lens] claude exited (code ${exitCode})`)
+    console.log(`[claude-lens] claude exited (code ${exitCode})`)
     try {
       ws.send(`\r\n[claude exited with code ${exitCode}]\r\n`)
       ws.close()
@@ -226,12 +226,12 @@ function handleTerminalConnection(ws) {
   })
 
   ws.on('close', () => {
-    console.log('[page-lens] terminal client disconnected')
+    console.log('[claude-lens] terminal client disconnected')
     shell.kill()
   })
 
   ws.on('error', (err) => {
-    console.error('[page-lens] terminal ws error:', err.message)
+    console.error('[claude-lens] terminal ws error:', err.message)
     shell.kill()
   })
 }
@@ -239,16 +239,16 @@ function handleTerminalConnection(ws) {
 // ── Start ──
 
 httpServer.listen(PORT, () => {
-  console.log(`[page-lens] claude binary: ${CLAUDE_BIN}`)
-  console.log(`[page-lens] server listening on http://localhost:${PORT}`)
-  console.log(`[page-lens]   terminal: ws://localhost:${PORT}/terminal`)
-  console.log(`[page-lens]   control:  ws://localhost:${PORT}/control`)
-  console.log(`[page-lens]   api:      http://localhost:${PORT}/api/page`)
+  console.log(`[claude-lens] claude binary: ${CLAUDE_BIN}`)
+  console.log(`[claude-lens] server listening on http://localhost:${PORT}`)
+  console.log(`[claude-lens]   terminal: ws://localhost:${PORT}/terminal`)
+  console.log(`[claude-lens]   control:  ws://localhost:${PORT}/control`)
+  console.log(`[claude-lens]   api:      http://localhost:${PORT}/api/page`)
 })
 
 httpServer.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`[page-lens] port ${PORT} already in use`)
+    console.error(`[claude-lens] port ${PORT} already in use`)
     process.exit(1)
   }
 })

@@ -1,4 +1,4 @@
-// Page Lens - Service Worker (minimal)
+// Claude Lens - Service Worker (minimal)
 // Only handles: side panel open + content script injection
 
 chrome.action.onClicked.addListener(async (tab) => {
@@ -14,10 +14,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }).then(() => {
       setTimeout(() => {
         chrome.tabs.sendMessage(message.tabId, { action: 'startInspector' }, () => {
-          if (chrome.runtime.lastError) console.warn('[page-lens]', chrome.runtime.lastError.message)
+          if (chrome.runtime.lastError) console.warn('[claude-lens]', chrome.runtime.lastError.message)
         })
       }, 150)
-    }).catch((err) => console.warn('[page-lens] inject failed:', err.message))
+    }).catch((err) => console.warn('[claude-lens] inject failed:', err.message))
     sendResponse({ ok: true })
     return false
   }

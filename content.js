@@ -1,12 +1,12 @@
-// Page Lens - Content Script
+// Claude Lens - Content Script
 // Guard against double injection
-if (window.__pageLensLoaded) {
+if (window.__claudeLensLoaded) {
   // Already loaded — just re-register inspector availability
 } else {
-  window.__pageLensLoaded = true
+  window.__claudeLensLoaded = true
 }
 
-console.log('[page-lens] content script loaded')
+console.log('[claude-lens] content script loaded')
 
 // ── Analysis Handlers ──
 
@@ -153,7 +153,7 @@ const Inspector = (() => {
     document.addEventListener('click', onClick, true)
     document.addEventListener('keydown', onKeyDown, true)
     document.body.style.cursor = 'crosshair'
-    console.log('[page-lens] inspector started')
+    console.log('[claude-lens] inspector started')
   }
 
   function stop() {
@@ -165,13 +165,13 @@ const Inspector = (() => {
     document.removeEventListener('keydown', onKeyDown, true)
     document.body.style.cursor = ''
     hoveredEl = null
-    console.log('[page-lens] inspector stopped')
+    console.log('[claude-lens] inspector stopped')
   }
 
   function createOverlay() {
     removeOverlay() // clean up any existing
     overlay = document.createElement('div')
-    overlay.id = '__page-lens-overlay'
+    overlay.id = '__claude-lens-overlay'
     overlay.style.cssText = `
       position: fixed; pointer-events: none; z-index: 2147483647;
       border: 2px solid #a78bfa; background: rgba(167,139,250,0.08);
@@ -180,7 +180,7 @@ const Inspector = (() => {
     `
 
     label = document.createElement('div')
-    label.id = '__page-lens-label'
+    label.id = '__claude-lens-label'
     label.style.cssText = `
       position: fixed; pointer-events: none; z-index: 2147483647;
       background: #1e1b4b; color: #e0e7ff; font-family: 'SF Mono', monospace;
@@ -193,15 +193,15 @@ const Inspector = (() => {
   }
 
   function removeOverlay() {
-    document.getElementById('__page-lens-overlay')?.remove()
-    document.getElementById('__page-lens-label')?.remove()
+    document.getElementById('__claude-lens-overlay')?.remove()
+    document.getElementById('__claude-lens-label')?.remove()
     overlay = null
     label = null
   }
 
   function onMouseMove(e) {
     const el = document.elementFromPoint(e.clientX, e.clientY)
-    if (!el || el === overlay || el === label || el.id?.startsWith('__page-lens')) return
+    if (!el || el === overlay || el === label || el.id?.startsWith('__claude-lens')) return
     hoveredEl = el
 
     const rect = el.getBoundingClientRect()

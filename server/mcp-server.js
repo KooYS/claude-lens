@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 
-// Page Lens MCP Server
+// Claude Lens MCP Server
 // Gives Claude Code access to the CURRENT Chrome tab via the extension.
 // Communicates with the main server's HTTP API.
 
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js')
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js')
 
-const API_BASE = `http://localhost:${process.env.PAGE_LENS_PORT || 19280}/api`
+const API_BASE = `http://localhost:${process.env.CLAUDE_LENS_PORT || 19280}/api`
 
 async function api(path) {
   const res = await fetch(`${API_BASE}${path}`)
@@ -27,7 +27,7 @@ function error(err) {
 }
 
 const server = new McpServer({
-  name: 'page-lens',
+  name: 'claude-lens',
   version: '0.2.0',
 })
 
@@ -160,10 +160,10 @@ server.tool(
 async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  console.error('[page-lens-mcp] running — tools for current Chrome tab')
+  console.error('[claude-lens-mcp] running — tools for current Chrome tab')
 }
 
 main().catch((err) => {
-  console.error('[page-lens-mcp] fatal:', err)
+  console.error('[claude-lens-mcp] fatal:', err)
   process.exit(1)
 })

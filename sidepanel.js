@@ -86,7 +86,7 @@ function connectTerminal() {
   }
 
   ws.onerror = () => {
-    showStatus('Cannot connect.\nnpm start --prefix ~/Desktop/dev/page-lens/server', true)
+    showStatus('Cannot connect.\nnpm start --prefix ~/Desktop/dev/claude-lens/server', true)
   }
 }
 
@@ -95,7 +95,7 @@ function connectTerminal() {
 function connectControl() {
   controlWs = new WebSocket(CONTROL_URL)
 
-  controlWs.onopen = () => console.log('[page-lens] control connected')
+  controlWs.onopen = () => console.log('[claude-lens] control connected')
 
   controlWs.onmessage = async (event) => {
     let msg
@@ -111,7 +111,7 @@ function connectControl() {
   }
 
   controlWs.onclose = () => {
-    console.log('[page-lens] control disconnected, reconnecting...')
+    console.log('[claude-lens] control disconnected, reconnecting...')
     setTimeout(connectControl, RECONNECT_INTERVAL)
   }
 
@@ -184,7 +184,7 @@ pickBtn.addEventListener('click', async () => {
 function stopPicking() {
   picking = false
   pickBtn.classList.remove('active')
-  toolbarLabel.textContent = 'Page Lens'
+  toolbarLabel.textContent = 'Claude Lens'
 }
 
 chrome.storage.onChanged.addListener((changes) => {

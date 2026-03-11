@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Page Lens",
+  "name": "Claude Lens",
   "version": "0.2.0",
   "description": "Claude Code CLI in your browser side panel",
   "permissions": ["activeTab", "sidePanel", "tabs", "scripting", "storage"],
@@ -13,7 +13,7 @@
     "run_at": "document_idle"
   }],
   "action": {
-    "default_title": "Page Lens",
+    "default_title": "Claude Lens",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

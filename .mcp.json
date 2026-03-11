@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "page-lens": {
+    "claude-lens": {
       "command": "node",
       "args": ["/Users/koo/Desktop/dev/page-lens/server/mcp-server.js"]
     }
