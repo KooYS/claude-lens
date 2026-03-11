@@ -4,16 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Page Lens</title>
+  <link rel="stylesheet" href="lib/xterm.css">
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <div class="terminal">
-    <div class="terminal__output" id="output"></div>
-    <div class="terminal__input-line">
-      <span class="prompt">$</span>
-      <input type="text" id="input" class="terminal__input" autofocus spellcheck="false" autocomplete="off" placeholder="Type a command..." />
-    </div>
-  </div>
+  <div id="status" class="status">Connecting...</div>
+  <div id="terminal"></div>
+  <script src="lib/xterm.js"></script>
+  <script src="lib/addon-fit.js"></script>
+  <script src="lib/addon-webgl.js"></script>
   <script src="sidepanel.js"></script>
 </body>
 </html>

@@ -1,0 +1,14 @@
+{
+  "name": "page-lens-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local bridge server: Chrome Extension ↔ Claude Code CLI",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  }
+}
