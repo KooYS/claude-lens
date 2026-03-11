@@ -8,6 +8,15 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
+  <div class="toolbar">
+    <button id="pickBtn" class="tool-btn" title="Pick element (inspect)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 2L7 14L9 9L14 7L2 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        <path d="M9 9L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+    <span class="toolbar__label" id="toolbarLabel">Page Lens</span>
+  </div>
   <div id="status" class="status">Connecting...</div>
   <div id="terminal"></div>
   <script src="lib/xterm.js"></script>

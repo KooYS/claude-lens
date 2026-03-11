@@ -10,21 +10,72 @@ html, body {
   background: #0a0a0c;
 }
 
-#terminal {
-  height: 100%;
-  width: 100%;
+/* Toolbar */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #111113;
+  border-bottom: 1px solid #1e1e22;
+  flex-shrink: 0;
 }
 
-/* Status bar - shown only during connection */
+.tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #27272a;
+  border-radius: 5px;
+  background: #18181b;
+  color: #a1a1aa;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.tool-btn:hover {
+  background: #27272a;
+  color: #e4e4e7;
+  border-color: #3f3f46;
+}
+
+.tool-btn.active {
+  background: #312e81;
+  color: #a78bfa;
+  border-color: #4c1d95;
+}
+
+.toolbar__label {
+  font-family: 'SF Mono', monospace;
+  font-size: 11px;
+  color: #52525b;
+}
+
+/* Terminal fills remaining space */
+#terminal {
+  flex: 1;
+  overflow: hidden;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Status */
 .status {
   display: none;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1;
   color: #71717a;
   font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
   font-size: 13px;
   background: #0a0a0c;
+  white-space: pre-line;
+  text-align: center;
 }
 
 .status.visible {

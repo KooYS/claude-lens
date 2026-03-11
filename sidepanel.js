@@ -1,12 +1,17 @@
-const WS_URL = 'ws://localhost:19280'
+const WS_URL = 'ws://localhost:19280/terminal'
 const RECONNECT_INTERVAL = 3000
 
 const statusEl = document.getElementById('status')
 const terminalEl = document.getElementById('terminal')
+const pickBtn = document.getElementById('pickBtn')
+const toolbarLabel = document.getElementById('toolbarLabel')
 
 let ws = null
 let term = null
 let fitAddon = null
+let picking = false
+
+// ── Terminal ──
 
 function initTerminal() {
   term = new Terminal({
@@ -44,58 +49,41 @@ function initTerminal() {
   fitAddon = new FitAddon.FitAddon()
   term.loadAddon(fitAddon)
 
-  // Try WebGL renderer for performance
   try {
     const webglAddon = new WebglAddon.WebglAddon()
     webglAddon.onContextLoss(() => webglAddon.dispose())
     term.loadAddon(webglAddon)
-  } catch {
-    // fallback to canvas renderer
-  }
+  } catch {}
 
   term.open(terminalEl)
   fitAddon.fit()
 
-  // Send keystrokes to server
   term.onData((data) => {
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(data)
     }
   })
 
-  // Handle resize
   term.onResize(({ cols, rows }) => {
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'resize', cols, rows }))
     }
   })
 
-  const resizeObserver = new ResizeObserver(() => {
-    fitAddon.fit()
-  })
-  resizeObserver.observe(terminalEl)
+  new ResizeObserver(() => fitAddon.fit()).observe(terminalEl)
 }
 
 function connect() {
   showStatus('Connecting to server...')
-
   ws = new WebSocket(WS_URL)
 
   ws.onopen = () => {
     hideStatus()
     term.focus()
-
-    // Send initial size
-    ws.send(JSON.stringify({
-      type: 'resize',
-      cols: term.cols,
-      rows: term.rows,
-    }))
+    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
   }
 
-  ws.onmessage = (event) => {
-    term.write(event.data)
-  }
+  ws.onmessage = (event) => term.write(event.data)
 
   ws.onclose = () => {
     showStatus('Disconnected. Reconnecting...', false)
@@ -103,7 +91,7 @@ function connect() {
   }
 
   ws.onerror = () => {
-    showStatus('Cannot connect. Is the server running?\nnpm start --prefix server', true)
+    showStatus('Cannot connect.\nnpm start --prefix ~/Desktop/dev/page-lens/server', true)
   }
 }
 
@@ -120,6 +108,75 @@ function hideStatus() {
   fitAddon?.fit()
 }
 
-// Boot
+// ── Element Picker ──
+
+pickBtn.addEventListener('click', async () => {
+  if (picking) {
+    stopPicking()
+    return
+  }
+
+  picking = true
+  pickBtn.classList.add('active')
+  toolbarLabel.textContent = 'Pick an element...'
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
+    if (!tab?.id) throw new Error('No active tab')
+    chrome.tabs.sendMessage(tab.id, { action: 'startInspector' })
+  } catch (err) {
+    stopPicking()
+    toolbarLabel.textContent = `Error: ${err.message}`
+  }
+})
+
+function stopPicking() {
+  picking = false
+  pickBtn.classList.remove('active')
+  toolbarLabel.textContent = 'Page Lens'
+}
+
+// Listen for picked element from content script
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'elementPicked') {
+    stopPicking()
+    injectElementData(message.data)
+  }
+
+  if (message.action === 'inspectorCancelled') {
+    stopPicking()
+  }
+})
+
+function injectElementData(data) {
+  // Format as a concise context block
+  const lines = []
+  lines.push(`I'm looking at this element on ${data.pageUrl}:`)
+  lines.push('')
+  lines.push(`Selector: ${data.selector}`)
+  lines.push(`Size: ${data.size.w}×${data.size.h}px`)
+
+  const styleEntries = Object.entries(data.styles || {})
+  if (styleEntries.length > 0) {
+    lines.push(`Styles: ${styleEntries.map(([k, v]) => `${k}: ${v}`).join('; ')}`)
+  }
+
+  lines.push('')
+  lines.push('```html')
+  lines.push(data.html)
+  lines.push('```')
+
+  const text = lines.join('\n')
+
+  // Send to server as inject message → writes to Claude PTY stdin
+  if (ws?.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'inject', text }))
+  }
+
+  term.focus()
+}
+
+// ── Boot ──
+
 initTerminal()
 connect()
