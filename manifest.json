@@ -7,11 +7,22 @@
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "sidepanel.html" },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["utils/dom-analyzer.js", "utils/style-extractor.js", "utils/layout-detector.js", "content.js"],
-    "run_at": "document_idle"
-  }],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "utils/dom-analyzer.js",
+        "utils/style-extractor.js",
+        "utils/layout-detector.js",
+        "extension/content-script/util/selector.util.js",
+        "extension/content-script/feature/tree-builder.feature.js",
+        "extension/content-script/feature/inspector.feature.js",
+        "extension/content-script/handler/message.handler.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
     "default_title": "Claude Lens",
     "default_icon": {

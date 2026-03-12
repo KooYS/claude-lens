@@ -1,26 +1,45 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Lens</title>
-  <link rel="stylesheet" href="lib/xterm.css">
-  <link rel="stylesheet" href="sidepanel.css">
-</head>
-<body>
-  <div class="toolbar">
-    <button id="pickBtn" class="tool-btn" title="Pick element (inspect)">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-        <path d="M2 2L7 14L9 9L14 7L2 2Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-        <path d="M9 9L13 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-      </svg>
-    </button>
-    <span class="toolbar__label" id="toolbarLabel">Claude Lens</span>
-  </div>
-  <div id="status" class="status">Connecting...</div>
-  <div id="terminal"></div>
-  <script src="lib/xterm.js"></script>
-  <script src="lib/addon-fit.js"></script>
-  <script src="sidepanel.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Claude Lens</title>
+    <link rel="stylesheet" href="libs/xterm/xterm.css" />
+    <link rel="stylesheet" href="sidepanel.css" />
+  </head>
+  <body>
+    <div class="toolbar">
+      <button id="pickBtn" class="tool-btn" title="Pick element (inspect)">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M2 2L7 14L9 9L14 7L2 2Z"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M9 9L13 13"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+        </svg>
+      </button>
+      <span class="toolbar__label" id="toolbarLabel">Claude Lens</span>
+    </div>
+    <div id="status" class="status">Connecting...</div>
+    <div id="terminal"></div>
+    <script src="libs/xterm/xterm.js"></script>
+    <script src="libs/xterm/addon-fit.js"></script>
+    <!-- View -->
+    <script src="extension/panel/view/status.view.js"></script>
+    <script src="extension/panel/view/terminal.view.js"></script>
+    <!-- Service -->
+    <script src="extension/panel/service/terminal.service.js"></script>
+    <script src="extension/panel/service/control.service.js"></script>
+    <!-- Feature -->
+    <script src="extension/panel/feature/picker.feature.js"></script>
+    <!-- Entry -->
+    <script src="sidepanel.js"></script>
+  </body>
 </html>
