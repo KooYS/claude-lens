@@ -12,7 +12,7 @@ const PORT = parseInt(process.env.PORT, 10) || 19280
 
 const bridgeService = new BridgeService()
 const claudeService = new ClaudeService()
-const apiController = new ApiController(bridgeService)
+const apiController = new ApiController(bridgeService, claudeService)
 const wsController = new WsController(bridgeService, claudeService)
 
 // ── HTTP Server ──

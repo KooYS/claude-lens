@@ -1,6 +1,6 @@
 // Layout Detector - Detects flex/grid layout patterns
 
-const LayoutDetector = (() => {
+var LayoutDetector = (() => {
   function detectLayouts() {
     const layouts = { flex: [], grid: [] }
 

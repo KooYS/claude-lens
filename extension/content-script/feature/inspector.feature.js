@@ -1,5 +1,5 @@
 // eslint-disable-next-line no-unused-vars
-const Inspector = (() => {
+var Inspector = (() => {
   let active = false;
   let overlay = null;
   let label = null;
@@ -17,7 +17,6 @@ const Inspector = (() => {
   }
 
   function stop() {
-    if (!active) return;
     active = false;
     removeOverlay();
     document.removeEventListener('mousemove', onMouseMove, true);
@@ -34,7 +33,7 @@ const Inspector = (() => {
     overlay.id = '__claude-lens-overlay';
     overlay.style.cssText = `
       position: fixed; pointer-events: none; z-index: 2147483647;
-      border: 2px solid #a78bfa; background: rgba(167,139,250,0.08);
+      border: 2px solid #e07a3a; background: rgba(224,122,58,0.08);
       border-radius: 2px; transition: all 0.05s ease-out;
       display: none;
     `;
@@ -43,7 +42,7 @@ const Inspector = (() => {
     label.id = '__claude-lens-label';
     label.style.cssText = `
       position: fixed; pointer-events: none; z-index: 2147483647;
-      background: #1e1b4b; color: #e0e7ff; font-family: 'SF Mono', monospace;
+      background: #431c07; color: #fed7aa; font-family: 'SF Mono', monospace;
       font-size: 11px; padding: 3px 8px; border-radius: 4px;
       white-space: nowrap; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
     `;

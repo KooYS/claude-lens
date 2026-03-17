@@ -1,6 +1,6 @@
 // DOM Analyzer - Analyzes page structure and builds component tree
 
-const DomAnalyzer = (() => {
+var DomAnalyzer = (() => {
   const SEMANTIC_TAGS = [
     'header', 'nav', 'main', 'section', 'article', 'aside', 'footer',
     'figure', 'figcaption', 'details', 'summary', 'dialog', 'form',

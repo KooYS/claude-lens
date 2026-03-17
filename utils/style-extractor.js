@@ -1,6 +1,6 @@
 // Style Extractor - Extracts computed styles for selected elements
 
-const StyleExtractor = (() => {
+var StyleExtractor = (() => {
   const KEY_PROPERTIES = [
     'display', 'position', 'width', 'height',
     'margin', 'padding', 'border',

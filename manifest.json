@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Claude Lens",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtS/bPyRtdXLFSmlsN41E23E9agfkInOSzPbcMnH0VaFshy8Xnqx88XFCdwPlEaD20WSXZgfa7cF2iR9nU7Tii3nBWfr5rKxAy515bSMUw36mEzH9wMoHvkDfgjgpx9ix5KMTNwCOmvQKNFEACKTBX1SPsLolJ+X9ZBhZVcfIgl5/ACAeDMQJvvAOlDcgKnJDQZxjYXmk0j6+g+/zWGOAEUxEWRIsuRgbmqUn0AqbPJ1BXQirnBUUPBWSLd1Q1KzgCjtGrcIHEm5Fq312NsI1VF1cvoYwCnEpU3qrdlGRh+Ep7Rq/tf9bW3oyQJ2YBjVpmGm0rtXTBTJY5dPMf0BX3wIDAQAB",
   "version": "0.2.0",
   "description": "Claude Code CLI in your browser side panel",
-  "permissions": ["activeTab", "sidePanel", "tabs", "scripting", "storage"],
+  "permissions": ["activeTab", "sidePanel", "tabs", "scripting", "storage", "debugger", "nativeMessaging"],
   "host_permissions": ["<all_urls>"],
   "background": { "service_worker": "background.js" },
   "side_panel": { "default_path": "sidepanel.html" },
