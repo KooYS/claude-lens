@@ -6,6 +6,7 @@
 
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js')
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js')
+const { z } = require('zod')
 
 const API_BASE = `http://localhost:${process.env.CLAUDE_LENS_PORT || 19280}/api`
 
@@ -62,7 +63,7 @@ server.tool(
 server.tool(
   'get_page_tree',
   'Get the component tree of the current Chrome page',
-  { depth: { type: 'number', description: 'Tree depth 1-6 (default 4)' } },
+  { depth: z.number().optional().describe('Tree depth 1-6 (default 4)') },
   async ({ depth }) => {
     try {
       const d = Math.min(Math.max(depth || 4, 1), 6)
@@ -78,8 +79,8 @@ server.tool(
   'get_visible_text',
   'Get the visible text content of an element on the current Chrome page',
   {
-    selector: { type: 'string', description: 'CSS selector (default: "body")' },
-    maxLength: { type: 'number', description: 'Max characters to return (default: 2000)' },
+    selector: z.string().optional().describe('CSS selector (default: "body")'),
+    maxLength: z.number().optional().describe('Max characters to return (default: 2000)'),
   },
   async ({ selector, maxLength }) => {
     try {
@@ -108,7 +109,7 @@ server.tool(
 server.tool(
   'get_element_info',
   'Get detailed info about a specific element: tag, classes, dimensions, computed styles',
-  { selector: { type: 'string', description: 'CSS selector (e.g., ".header", "#main", "nav")' } },
+  { selector: z.string().describe('CSS selector (e.g., ".header", "#main", "nav")') },
   async ({ selector }) => {
     try {
       const data = await api(`/element?selector=${encodeURIComponent(selector)}`)
@@ -120,7 +121,7 @@ server.tool(
 server.tool(
   'get_element_html',
   'Get the outer HTML of an element on the current page',
-  { selector: { type: 'string', description: 'CSS selector (default: "body")' } },
+  { selector: z.string().optional().describe('CSS selector (default: "body")') },
   async ({ selector }) => {
     try {
       const data = await api(`/html?selector=${encodeURIComponent(selector || 'body')}`)
@@ -148,11 +149,75 @@ server.tool(
 server.tool(
   'run_js_on_page',
   'Execute JavaScript code on the current Chrome page and return the result. Use this to read any value, interact with the page, or check state.',
-  { code: { type: 'string', description: 'JavaScript code to execute (should return a value)' } },
+  { code: z.string().describe('JavaScript code to execute (should return a value)') },
   async ({ code }) => {
     try {
       const data = await api(`/eval?code=${encodeURIComponent(code)}`)
       return result(data.result)
+    } catch (err) { return error(err) }
+  },
+)
+
+// ── Network capture ──
+
+server.tool(
+  'start_network_capture',
+  'Start capturing network requests on the current Chrome tab. Uses Chrome DevTools Protocol via debugger. A yellow "debugging" bar will appear on the page — this is expected. Call get_network_requests to retrieve captured data.',
+  {},
+  async () => {
+    try {
+      const data = await api('/network/start')
+      return result('Network capture started. Use get_network_requests() to view captured requests.')
+    } catch (err) { return error(err) }
+  },
+)
+
+server.tool(
+  'get_network_requests',
+  'Get captured network requests. Must call start_network_capture first. Returns URL, method, status, type, size, and mimeType for each request.',
+  {
+    type: z.string().optional().describe('Filter by resource type (comma-separated): XHR, Fetch, Document, Stylesheet, Script, Image, Media, Font, WebSocket, Other'),
+    urlPattern: z.string().optional().describe('Regex pattern to filter URLs (e.g., "api\\\\.twitter|video\\\\.twimg")'),
+    statusCode: z.number().optional().describe('Filter by HTTP status code (e.g., 200, 404)'),
+    limit: z.number().optional().describe('Max requests to return (default: 200, most recent)'),
+  },
+  async ({ type, urlPattern, statusCode, limit }) => {
+    try {
+      const params = new URLSearchParams()
+      if (type) params.set('type', type)
+      if (urlPattern) params.set('urlPattern', urlPattern)
+      if (statusCode) params.set('statusCode', statusCode)
+      if (limit) params.set('limit', limit)
+      const qs = params.toString()
+      const data = await api(`/network/requests${qs ? '?' + qs : ''}`)
+      return result(JSON.stringify(data, null, 2))
+    } catch (err) { return error(err) }
+  },
+)
+
+server.tool(
+  'get_network_response_body',
+  'Get the response body of a specific captured network request. The network capture must still be active (not stopped).',
+  { requestId: z.string().describe('The requestId from get_network_requests results') },
+  async ({ requestId }) => {
+    try {
+      const data = await api(`/network/response-body?requestId=${encodeURIComponent(requestId)}`)
+      if (data.base64Encoded) {
+        return result(`[Base64 encoded response - ${data.body.length} chars]\nFirst 500 chars: ${data.body.substring(0, 500)}`)
+      }
+      return result(data.body)
+    } catch (err) { return error(err) }
+  },
+)
+
+server.tool(
+  'stop_network_capture',
+  'Stop capturing network requests and detach the debugger. The yellow debugging bar will disappear.',
+  {},
+  async () => {
+    try {
+      const data = await api('/network/stop')
+      return result('Network capture stopped.')
     } catch (err) { return error(err) }
   },
 )

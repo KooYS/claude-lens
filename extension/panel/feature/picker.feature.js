@@ -11,7 +11,10 @@ class PickerFeature {
 
     chrome.storage.onChanged.addListener((changes) => {
       if (changes.pickedElement && this.picking) {
-        this.stopPicking();
+        // Inspector already stopped itself on click — just reset UI
+        this.picking = false;
+        this.pickBtn.classList.remove('active');
+        this.toolbarLabel.textContent = 'Claude Lens';
         const data = changes.pickedElement.newValue;
         if (data) this.injectElementData(data);
       }
@@ -25,7 +28,7 @@ class PickerFeature {
 
   async toggle() {
     if (this.picking) {
-      this.stopPicking();
+      await this.cancelPicking();
       return;
     }
 
@@ -44,21 +47,33 @@ class PickerFeature {
         { action: 'startInspector', tabId: tab.id },
         (response) => {
           if (chrome.runtime.lastError || response?.error) {
-            this.stopPicking();
+            this.picking = false;
+            this.pickBtn.classList.remove('active');
             this.toolbarLabel.textContent = `Error: ${chrome.runtime.lastError?.message || response.error}`;
           }
         },
       );
     } catch (err) {
-      this.stopPicking();
+      this.picking = false;
+      this.pickBtn.classList.remove('active');
       this.toolbarLabel.textContent = `Error: ${err.message}`;
     }
   }
 
-  stopPicking() {
+  async cancelPicking() {
     this.picking = false;
     this.pickBtn.classList.remove('active');
     this.toolbarLabel.textContent = 'Claude Lens';
+
+    try {
+      const [tab] = await chrome.tabs.query({
+        active: true,
+        lastFocusedWindow: true,
+      });
+      if (tab?.id) {
+        chrome.runtime.sendMessage({ action: 'stopInspector', tabId: tab.id });
+      }
+    } catch {}
   }
 
   injectElementData(data) {

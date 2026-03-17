@@ -17,6 +17,10 @@ Available claude-lens tools:
 - `get_page_tree(depth)` — Component tree
 - `get_layout_info` — Flex/grid layout patterns
 - `run_js_on_page(code)` — Execute any JavaScript on the current tab
+- `start_network_capture()` — Start capturing network requests (Chrome debugger attaches)
+- `get_network_requests(type?, urlPattern?, statusCode?, limit?)` — Get captured requests with filters
+- `get_network_response_body(requestId)` — Get response body of a specific request
+- `stop_network_capture()` — Stop capturing and detach debugger
 
 ## Context
 

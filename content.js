@@ -1,12 +1,11 @@
 // Claude Lens - Content Script (Entry Point)
 // Guard against double injection
 if (window.__claudeLensLoaded) {
-  // Already loaded — just re-register inspector availability
+  // Already loaded — skip re-registration
 } else {
   window.__claudeLensLoaded = true;
+  console.log('[claude-lens] content script loaded');
+  if (typeof registerMessageHandler === 'function') {
+    registerMessageHandler();
+  }
 }
-
-console.log('[claude-lens] content script loaded');
-
-// Register message handler (depends on: Inspector, DomAnalyzer, StyleExtractor, LayoutDetector, buildCssSelector, buildStructureTree)
-registerMessageHandler();

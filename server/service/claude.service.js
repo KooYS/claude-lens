@@ -1,23 +1,41 @@
 const { execSync } = require('child_process')
 const pty = require('node-pty')
 
-const CLAUDE_BIN = (() => {
+function detectClaudeBin() {
+  if (process.env.CLAUDE_BIN) return process.env.CLAUDE_BIN
   try {
     return execSync('which claude', { encoding: 'utf8' }).trim()
   } catch {
-    return '/Users/koo/.local/bin/claude'
+    return null
   }
-})()
+}
 
 class ClaudeService {
-  handleTerminalConnection(ws) {
-    console.log('[claude-lens] terminal client connected, spawning claude...')
+  constructor() {
+    this._binary = detectClaudeBin()
+  }
 
-    const shell = pty.spawn(CLAUDE_BIN, ['--dangerously-skip-permissions'], {
+  setBinary(path) {
+    this._binary = path
+  }
+
+  handleTerminalConnection(ws, options = {}) {
+    if (!this._binary) {
+      ws.send('\r\n[error] Claude CLI not found. Set the path in Settings.\r\n')
+      ws.close()
+      return
+    }
+
+    const cwd = options.cwd || process.cwd()
+    const skipPerm = options.skipPermissions !== false
+    const args = skipPerm ? ['--dangerously-skip-permissions'] : []
+    console.log(`[claude-lens] terminal client connected, cwd: ${cwd}, skipPerm: ${skipPerm}`)
+
+    const shell = pty.spawn(this._binary, args, {
       name: 'xterm-256color',
       cols: 80,
       rows: 24,
-      cwd: '/Users/koo/Desktop/dev/claude-rens',
+      cwd,
       env: { ...process.env, FORCE_COLOR: '1' },
     })
 
@@ -61,7 +79,7 @@ class ClaudeService {
   }
 
   get binary() {
-    return CLAUDE_BIN
+    return this._binary
   }
 }
 
