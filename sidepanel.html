@@ -35,21 +35,48 @@
       </button>
     </div>
     <div id="setup" class="setup visible">
-      <div class="setup__group">
-        <label class="setup__label">Server Port</label>
-        <input id="portInput" class="setup__input" type="number" min="1" max="65535" value="19280" placeholder="19280" />
+
+      <!-- Claude Server -->
+      <div class="setup__card" id="installGuide">
+        <div class="setup__card-header">
+          <span class="setup__card-title">Claude Server</span>
+          <span class="setup__card-badge" id="serverBadge">Not running</span>
+        </div>
+        <p class="setup__card-desc">Claude Lens runs a local background server that launches Claude CLI in your browser. Run the install command once to enable auto-start.</p>
+        <div class="setup__group">
+          <label class="setup__label">Auto-start setup <span class="setup__label-once">(run once)</span></label>
+          <div class="setup__cmd-box">
+            <span class="setup__cmd-text">./native-host/install.sh</span>
+            <button id="copyInstallCmd" class="setup__copy-btn" title="Copy command">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/>
+              </svg>
+            </button>
+          </div>
+          <p class="setup__install-hint" id="installHint">Run from project root — starts server automatically on connect</p>
+        </div>
+        <div class="setup__row">
+          <div class="setup__group setup__group--half">
+            <label class="setup__label">Port</label>
+            <input id="portInput" class="setup__input" type="number" min="1" max="65535" value="19280" placeholder="19280" />
+          </div>
+          <div class="setup__group setup__group--half">
+            <label class="setup__label">Claude CLI</label>
+            <button id="claudeBinBtn" class="setup__folder-btn" type="button">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M6 2L3 6h3v4H4l3 4 3-4H8V6h3L8 2 6 2z" stroke="currentColor" stroke-width="1.3" fill="none"/>
+              </svg>
+              <span class="setup__folder-btn-text" id="claudeBinLabel">Detecting...</span>
+            </button>
+          </div>
+        </div>
       </div>
-      <div class="setup__group">
-        <label class="setup__label">Claude CLI</label>
-        <button id="claudeBinBtn" class="setup__folder-btn" type="button">
-          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-            <path d="M6 2L3 6h3v4H4l3 4 3-4H8V6h3L8 2 6 2z" stroke="currentColor" stroke-width="1.3" fill="none"/>
-          </svg>
-          <span class="setup__folder-btn-text" id="claudeBinLabel">Detecting...</span>
-        </button>
-      </div>
+
+      <!-- Working Directory -->
       <div class="setup__group">
         <label class="setup__label">Working Directory</label>
+        <p class="setup__field-desc">Optional — defaults to project root</p>
         <button id="folderBtn" class="setup__folder-btn" type="button">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <path
@@ -61,7 +88,63 @@
           <span class="setup__folder-btn-text">Select folder...</span>
         </button>
       </div>
+
       <div class="setup__divider"></div>
+
+      <!-- MCP -->
+      <div class="setup__card setup__card--mcp">
+        <div class="setup__card-header">
+          <span class="setup__card-title">MCP Tools</span>
+        </div>
+        <p class="setup__card-desc">Claude Code uses MCP to read your browser tab. The MCP server path is registered globally in <code class="setup__code">~/.claude/settings.json</code> by the install script.</p>
+        <div class="setup__group">
+          <label class="setup__label">MCP Server Path</label>
+          <div class="setup__cmd-box">
+            <span class="setup__cmd-text" id="mcpServerPath">…/server/mcp-server.js</span>
+          </div>
+        </div>
+        <div class="setup__notice">
+          <span class="setup__notice-icon">⚠</span>
+          <span>After running <code class="setup__code">install.sh</code>, restart Claude Code to activate MCP tools.</span>
+        </div>
+      </div>
+
+      <!-- Troubleshooting -->
+      <details class="setup__details">
+        <summary class="setup__details-summary">Troubleshooting</summary>
+        <div class="setup__details-body">
+
+          <div class="setup__trouble-item">
+            <p class="setup__trouble-q">Server keeps showing "Not running" after install</p>
+            <p class="setup__trouble-a">Run <code class="setup__code">./native-host/install.sh</code> from the project root, then click Connect. The server starts on connect, not on panel open.</p>
+          </div>
+
+          <div class="setup__trouble-item">
+            <p class="setup__trouble-q">Auto-start doesn't work (native messaging failed)</p>
+            <p class="setup__trouble-a">Chrome Guest profile blocks native messaging. Switch to a regular Chrome profile, or start the server manually: <code class="setup__code">npm start --prefix ~/path/to/claude-lens/server</code></p>
+          </div>
+
+          <div class="setup__trouble-item">
+            <p class="setup__trouble-q">MCP tools show "failed" in Claude Code</p>
+            <p class="setup__trouble-a">After running <code class="setup__code">install.sh</code>, fully restart Claude Code — the new MCP config won't load until then.</p>
+          </div>
+
+          <div class="setup__trouble-item">
+            <p class="setup__trouble-q">Claude CLI shows "Not found"</p>
+            <p class="setup__trouble-a">Re-run <code class="setup__code">install.sh</code> while Claude CLI is installed, or click the Claude CLI field to set the path manually.</p>
+          </div>
+
+          <div class="setup__trouble-item">
+            <p class="setup__trouble-q">MCP server path not found / MCP path shows placeholder</p>
+            <p class="setup__trouble-a">The MCP path is registered in <code class="setup__code">~/.claude/settings.json</code> by install.sh. If missing, re-run <code class="setup__code">install.sh</code> and check that the file contains a <code class="setup__code">claude-lens</code> entry under <code class="setup__code">mcpServers</code>.</p>
+          </div>
+
+        </div>
+      </details>
+
+      <div class="setup__divider"></div>
+
+      <!-- Terminal -->
       <div class="setup__row">
         <div class="setup__group setup__group--half">
           <label class="setup__label">Font Size</label>
@@ -81,7 +164,8 @@
         <input id="skipPermToggle" type="checkbox" checked />
         <span class="setup__toggle-label">Skip permissions (--dangerously-skip-permissions)</span>
       </label>
-      <button id="connectBtn" class="setup__connect-btn" disabled>
+
+      <button id="connectBtn" class="setup__connect-btn">
         Connect
       </button>
     </div>

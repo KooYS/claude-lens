@@ -44,6 +44,7 @@ class ApiController {
       '/api/network/response-body': this.networkGetResponseBody,
       '/api/network/clear': this.networkClear,
       '/api/claude-bin': this.claudeBin,
+      '/api/mcp-path': this.getMcpPath,
       '/api/pick-file': this.pickFile,
     }
   }
@@ -193,6 +194,12 @@ class ApiController {
     }
     res.writeHead(200)
     res.end(JSON.stringify({ path: this.claude.binary }))
+  }
+
+  getMcpPath(req, res) {
+    const path = require('path')
+    res.writeHead(200)
+    res.end(JSON.stringify({ path: path.join(__dirname, '..', 'mcp-server.js') }))
   }
 
   pickFile(req, res, url) {

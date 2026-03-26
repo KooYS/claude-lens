@@ -31,6 +31,11 @@ const claudeBinLabel = document.getElementById('claudeBinLabel');
 const fontSizeInput = document.getElementById('fontSizeInput');
 const themeSelect = document.getElementById('themeSelect');
 const skipPermToggle = document.getElementById('skipPermToggle');
+const copyInstallCmd = document.getElementById('copyInstallCmd');
+const mcpServerPath = document.getElementById('mcpServerPath');
+const installGuide = document.getElementById('installGuide');
+const serverBadge = document.getElementById('serverBadge');
+const installHint = document.getElementById('installHint');
 
 // ── Assemble ──
 
@@ -64,7 +69,7 @@ async function fetchClaudeBin() {
     const data = await res.json();
     setClaudeBin(data.path);
   } catch {
-    claudeBinLabel.textContent = 'Server not running';
+    claudeBinLabel.textContent = 'Auto-detect after connect';
   }
 }
 
@@ -101,7 +106,6 @@ function setFolder(path) {
     ? path.split('/').pop()
     : 'Select folder...';
   folderBtn.classList.toggle('selected', !!path);
-  connectBtn.disabled = !path;
   statusbar.textContent = path || '';
 }
 
@@ -132,11 +136,13 @@ function showSetup() {
   setupEl.classList.add('visible');
   terminalEl.style.display = 'none';
   statusEl.classList.remove('visible');
+  settingsBtn.classList.add('active');
 }
 
 function hideSetup() {
   setupEl.classList.remove('visible');
   terminalEl.style.display = '';
+  settingsBtn.classList.remove('active');
 }
 
 function disconnect() {
@@ -159,32 +165,55 @@ function buildWsUrl(path, folder, params = {}) {
 
 const NATIVE_HOST = 'com.claude_lens.host';
 
+function setServerBadge(state) {
+  serverBadge.className = 'setup__card-badge';
+  if (state === 'running') {
+    serverBadge.textContent = 'Running';
+    serverBadge.classList.add('running');
+  } else if (state === 'starting') {
+    serverBadge.textContent = 'Starting...';
+  } else if (state === 'error') {
+    serverBadge.textContent = 'Not installed';
+    serverBadge.classList.add('error');
+  } else {
+    serverBadge.textContent = 'Not running';
+  }
+}
+
 async function ensureServerRunning() {
   // Check if already running
   try {
     const res = await fetch(`${getApiBase()}/api/status`);
-    if (res.ok) return true;
+    if (res.ok) {
+      setServerBadge('running');
+      return true;
+    }
   } catch {}
 
   // Start via native messaging
   try {
+    setServerBadge('starting');
     statusbar.textContent = 'Starting server...';
     const response = await chrome.runtime.sendNativeMessage(NATIVE_HOST, {
       action: 'start',
       port: serverPort,
       claudeBin: claudeBinPath || undefined,
     });
+    if (response.success) setServerBadge('running');
     return response.success;
   } catch (err) {
     console.error('[claude-lens] native messaging failed:', err);
-    statusbar.textContent = 'Native host not installed. Run native-host/install.sh';
+    setServerBadge('error');
+    statusbar.textContent = 'Auto-start not set up';
+    installGuide.classList.add('error');
+    installGuide.querySelector('.setup__cmd-box').classList.add('error');
+    installHint.classList.add('error');
+    installHint.textContent = 'Run the command above first, then reconnect';
     return false;
   }
 }
 
 async function handleConnect() {
-  if (!selectedFolder) return;
-
   connectBtn.disabled = true;
   connectBtn.textContent = 'Connecting...';
 
@@ -216,6 +245,13 @@ async function handleConnect() {
 }
 
 // ── Events ──
+
+copyInstallCmd.addEventListener('click', () => {
+  navigator.clipboard.writeText('./native-host/install.sh').then(() => {
+    copyInstallCmd.style.color = '#e07a3a';
+    setTimeout(() => { copyInstallCmd.style.color = ''; }, 1500);
+  });
+});
 
 claudeBinBtn.addEventListener('click', pickClaudeBin);
 folderBtn.addEventListener('click', openFolderPicker);
@@ -283,4 +319,13 @@ connectBtn.addEventListener('click', handleConnect);
 
   showSetup();
   fetchClaudeBin();
+  fetch(`${getApiBase()}/api/mcp-path`)
+    .then(r => r.json())
+    .then(d => { if (d.path) mcpServerPath.textContent = d.path })
+    .catch(() => {});
+
+  // Check server status on boot for badge
+  fetch(`${getApiBase()}/api/status`)
+    .then(res => { if (res.ok) setServerBadge('running'); })
+    .catch(() => {});
 })();

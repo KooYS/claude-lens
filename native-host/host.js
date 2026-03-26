@@ -2,6 +2,9 @@
 
 const { spawn } = require('child_process')
 const path = require('path')
+const fs = require('fs')
+const LOG = '/tmp/claude-lens-native.log'
+const log = (...a) => fs.appendFileSync(LOG, new Date().toISOString() + ' ' + a.join(' ') + '\n')
 
 // ── Native Messaging Protocol ──
 
@@ -36,11 +39,13 @@ function readMessage() {
 }
 
 function sendMessage(msg) {
-  const json = JSON.stringify(msg)
-  const header = Buffer.alloc(4)
-  header.writeUInt32LE(json.length, 0)
-  process.stdout.write(header)
-  process.stdout.write(json)
+  return new Promise((resolve) => {
+    const json = JSON.stringify(msg)
+    const header = Buffer.alloc(4)
+    header.writeUInt32LE(json.length, 0)
+    const data = Buffer.concat([header, Buffer.from(json)])
+    process.stdout.write(data, resolve)
+  })
 }
 
 function sleep(ms) {
@@ -59,8 +64,10 @@ async function checkServer(port) {
 // ── Main ──
 
 async function main() {
+  log('host.js main() started')
   try {
     const msg = await readMessage()
+    log('received message:', JSON.stringify(msg))
 
     if (msg.action === 'start') {
       const port = msg.port || 19280
@@ -68,7 +75,7 @@ async function main() {
 
       // Already running?
       if (await checkServer(port)) {
-        sendMessage({ success: true, alreadyRunning: true })
+        await sendMessage({ success: true, alreadyRunning: true })
         return
       }
 
@@ -88,17 +95,18 @@ async function main() {
       for (let i = 0; i < 20; i++) {
         await sleep(250)
         if (await checkServer(port)) {
-          sendMessage({ success: true, pid: child.pid })
+          await sendMessage({ success: true, pid: child.pid })
           return
         }
       }
 
-      sendMessage({ success: false, error: 'Server did not start in time' })
+      await sendMessage({ success: false, error: 'Server did not start in time' })
     } else {
-      sendMessage({ success: false, error: `Unknown action: ${msg.action}` })
+      await sendMessage({ success: false, error: `Unknown action: ${msg.action}` })
     }
   } catch (err) {
-    sendMessage({ success: false, error: err.message })
+    log('error:', err.message)
+    await sendMessage({ success: false, error: err.message })
   }
 }
 

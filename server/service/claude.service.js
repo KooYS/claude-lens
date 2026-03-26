@@ -1,4 +1,5 @@
 const { execSync } = require('child_process')
+const path = require('path')
 const pty = require('node-pty')
 
 function detectClaudeBin() {
@@ -26,7 +27,7 @@ class ClaudeService {
       return
     }
 
-    const cwd = options.cwd || process.cwd()
+    const cwd = options.cwd || path.join(__dirname, '..', '..')
     const skipPerm = options.skipPermissions !== false
     const args = skipPerm ? ['--dangerously-skip-permissions'] : []
     console.log(`[claude-lens] terminal client connected, cwd: ${cwd}, skipPerm: ${skipPerm}`)
