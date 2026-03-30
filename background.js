@@ -125,9 +125,43 @@ function handleNetworkClear() {
 
 // ── Side panel open ──
 
+let sidePanelFallbackTimer = null
+
+async function openPopupFallback(tab) {
+  try {
+    const win = await chrome.windows.get(tab.windowId)
+    const width = 420
+    await chrome.windows.create({
+      url: chrome.runtime.getURL('sidepanel.html'),
+      type: 'popup',
+      width,
+      height: win.height ?? 800,
+      left: (win.left ?? 0) + (win.width ?? 1280) - width,
+      top: win.top ?? 0,
+    })
+  } catch {
+    chrome.tabs.create({ url: chrome.runtime.getURL('sidepanel.html') })
+  }
+}
+
 chrome.action.onClicked.addListener(async (tab) => {
   if (!tab.id) return
-  await chrome.sidePanel.open({ tabId: tab.id })
+
+  if (chrome.sidePanel) {
+    try {
+      await chrome.sidePanel.open({ tabId: tab.id })
+      // sidepanel.js가 실제로 로드되지 않으면 (Arc 등) 800ms 후 팝업으로 fallback
+      sidePanelFallbackTimer = setTimeout(() => {
+        console.warn('[claude-lens] sidePanel did not respond, opening popup fallback')
+        openPopupFallback(tab)
+      }, 800)
+      return
+    } catch (err) {
+      console.warn('[claude-lens] sidePanel.open failed:', err.message)
+    }
+  }
+
+  await openPopupFallback(tab)
 })
 
 // ── Message router ──
@@ -144,6 +178,14 @@ const CONTENT_SCRIPT_FILES = [
 ]
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // ── Side panel ready (cancels popup fallback timer) ──
+  if (message.action === 'sidePanelReady') {
+    clearTimeout(sidePanelFallbackTimer)
+    sidePanelFallbackTimer = null
+    sendResponse({ ok: true })
+    return false
+  }
+
   // ── Inspector ──
   if (message.action === 'startInspector' && message.tabId) {
     chrome.scripting.executeScript({

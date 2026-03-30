@@ -328,4 +328,7 @@ connectBtn.addEventListener('click', handleConnect);
   fetch(`${getApiBase()}/api/status`)
     .then(res => { if (res.ok) setServerBadge('running'); })
     .catch(() => {});
+
+  // Notify background that side panel actually loaded
+  chrome.runtime.sendMessage({ action: 'sidePanelReady' }).catch(() => {});
 })();
