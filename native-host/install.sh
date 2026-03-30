@@ -24,6 +24,10 @@ EXT_ID="${1:-$DEFAULT_EXT_ID}"
 echo "[server] Installing npm dependencies..."
 npm install --prefix "$PROJECT_DIR/server" --silent
 
+# node-pty's spawn-helper loses execute permission on npm install
+chmod +x "$PROJECT_DIR/server/node_modules/node-pty/prebuilds/darwin-x64/spawn-helper" 2>/dev/null || true
+chmod +x "$PROJECT_DIR/server/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper" 2>/dev/null || true
+
 # ── 1. Resolve node path ──
 
 NODE_BIN="$(which node 2>/dev/null)"

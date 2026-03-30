@@ -23,7 +23,7 @@ class ClaudeService {
   handleTerminalConnection(ws, options = {}) {
     if (!this._binary) {
       ws.send('\r\n[error] Claude CLI not found. Set the path in Settings.\r\n')
-      ws.close()
+      ws.close(4001, 'claude_not_found')
       return
     }
 
@@ -48,7 +48,7 @@ class ClaudeService {
       console.log(`[claude-lens] claude exited (code ${exitCode})`)
       try {
         ws.send(`\r\n[claude exited with code ${exitCode}]\r\n`)
-        ws.close()
+        ws.close(4002, 'session_ended')
       } catch {}
     })
 

@@ -13,6 +13,7 @@ class TerminalService {
     this.terminalView = terminalView;
     this.statusView = statusView;
     this._disconnected = false;
+    this._hadError = false;
 
     statusView.show('Connecting to server...');
     this.ws = new WebSocket(this.url);
@@ -27,13 +28,21 @@ class TerminalService {
 
     this.ws.onmessage = (event) => terminalView.write(event.data);
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       if (this._disconnected) return;
+      if (this._hadError) return;
+      // Server intentionally closed: 4001 = CLI not found, 4002 = session ended
+      if (event.code === 4001) {
+        statusView.show('Claude CLI not found.\nSet the path in Settings.', true);
+        return;
+      }
+      if (event.code === 4002) return;
       statusView.show('Disconnected. Reconnecting...', false);
       setTimeout(() => this.connect(this.url, terminalView, statusView), this.reconnectInterval);
     };
 
     this.ws.onerror = () => {
+      this._hadError = true;
       statusView.show(
         'Cannot connect.\nnpm start --prefix ~/Desktop/dev/claude-lens/server',
         true,
