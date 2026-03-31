@@ -198,6 +198,12 @@ body {
   border-color: #e07a3a;
 }
 
+.setup__folder-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .setup__folder-path {
   font-family: 'SF Mono', monospace;
   font-size: 12px;

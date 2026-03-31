@@ -167,6 +167,7 @@ const NATIVE_HOST = 'com.claude_lens.host';
 
 function setServerBadge(state) {
   serverBadge.className = 'setup__card-badge';
+  const serverRunning = state === 'running';
   if (state === 'running') {
     serverBadge.textContent = 'Running';
     serverBadge.classList.add('running');
@@ -178,6 +179,12 @@ function setServerBadge(state) {
   } else {
     serverBadge.textContent = 'Not running';
   }
+
+  const hint = 'Connect to the server first';
+  folderBtn.disabled = !serverRunning;
+  folderBtn.title = serverRunning ? '' : hint;
+  claudeBinBtn.disabled = !serverRunning;
+  claudeBinBtn.title = serverRunning ? '' : hint;
 }
 
 async function ensureServerRunning() {
@@ -326,8 +333,8 @@ connectBtn.addEventListener('click', handleConnect);
 
   // Check server status on boot for badge
   fetch(`${getApiBase()}/api/status`)
-    .then(res => { if (res.ok) setServerBadge('running'); })
-    .catch(() => {});
+    .then(res => { setServerBadge(res.ok ? 'running' : 'stopped'); })
+    .catch(() => { setServerBadge('stopped'); });
 
   // Notify background that side panel actually loaded
   chrome.runtime.sendMessage({ action: 'sidePanelReady' }).catch(() => {});

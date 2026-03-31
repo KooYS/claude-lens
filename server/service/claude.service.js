@@ -29,7 +29,18 @@ class ClaudeService {
 
     const cwd = options.cwd || path.join(__dirname, '..', '..')
     const skipPerm = options.skipPermissions !== false
-    const args = skipPerm ? ['--dangerously-skip-permissions'] : []
+    const mcpConfig = JSON.stringify({
+      mcpServers: {
+        'claude-lens': {
+          command: process.execPath,
+          args: [path.join(__dirname, '..', 'mcp-server.js')],
+        },
+      },
+    })
+    const args = [
+      ...(skipPerm ? ['--dangerously-skip-permissions'] : []),
+      '--mcp-config', mcpConfig,
+    ]
     console.log(`[claude-lens] terminal client connected, cwd: ${cwd}, skipPerm: ${skipPerm}`)
 
     const shell = pty.spawn(this._binary, args, {

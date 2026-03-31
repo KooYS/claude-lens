@@ -2,7 +2,7 @@
 
 # Claude Lens installer
 # - Registers Native Messaging host for Chrome
-# - Generates .mcp.json with correct absolute paths
+# - Registers MCP server globally in ~/.claude/settings.json
 #
 # Usage: ./install.sh <chrome-extension-id>
 # Find your extension ID at chrome://extensions (enable Developer Mode)
