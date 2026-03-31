@@ -12,12 +12,21 @@
 
 ## 데모
 
-<!-- 스크린샷/영상 추가 예정 -->
-![Demo 1](docs/images/1.png)
-![Demo 2](docs/images/2.png)
+**사이드 패널을 열고 작업 디렉토리를 설정해 Claude를 연결합니다:**
 
-<!-- 데모 영상 -->
-<!-- ![Demo Video](docs/images/demo.gif) -->
+![Connect](docs/images/install/3.png)
+
+**Claude가 MCP로 현재 페이지를 분석하고 파일을 생성합니다:**
+
+![MCP 페이지 분석](docs/images/example/4.png)
+![에디터에서 결과 확인](docs/images/example/5.png)
+
+**어떤 페이지든 동작합니다 — 요소 선택, 테이블 읽기, 네트워크 캡처:**
+
+![Picker 기능](docs/images/result_use_picker.png)
+![MCP 데이터 추출](docs/images/result_use_mcp.png)
+
+<!-- 데모 영상 (추후 추가 예정) -->
 <!-- <video src="docs/images/demo.mp4" controls width="100%"></video> -->
 
 ---
@@ -44,6 +53,8 @@ cd claude-lens
 2. **개발자 모드** 활성화 (우측 상단 토글)
 3. **압축 해제된 항목 로드** 클릭 → 프로젝트 루트 폴더 선택
 4. Extension ID 확인 (`manifest.json`의 `key` 필드로 고정 — 재로드해도 동일)
+
+![확장 프로그램 로드](docs/images/install/1.png)
 
 ### 2. 인스톨러 실행
 

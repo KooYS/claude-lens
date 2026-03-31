@@ -12,12 +12,21 @@
 
 ## Demo
 
-<!-- Add demo screenshots/video here -->
-![Demo 1](docs/images/1.png)
-![Demo 2](docs/images/2.png)
+**Open the side panel and connect Claude to your working directory:**
 
-<!-- Demo video -->
-<!-- ![Demo Video](docs/images/demo.gif) -->
+![Connect](docs/images/install/3.png)
+
+**Claude analyzes the current page via MCP and generates files:**
+
+![MCP Page Analysis](docs/images/example/4.png)
+![Result in Editor](docs/images/example/5.png)
+
+**Works on any page — pick elements, read tables, capture network requests:**
+
+![Picker Feature](docs/images/result_use_picker.png)
+![MCP Data Extraction](docs/images/result_use_mcp.png)
+
+<!-- Demo video (coming soon) -->
 <!-- <video src="docs/images/demo.mp4" controls width="100%"></video> -->
 
 ---
@@ -44,6 +53,8 @@ cd claude-lens
 2. Enable **Developer Mode** (top-right toggle)
 3. Click **Load unpacked** → select the project root folder
 4. Note your **Extension ID** (fixed via `manifest.json` key field — stays the same across reloads)
+
+![Load Extension](docs/images/install/1.png)
 
 ### 2. Run the Installer
 
